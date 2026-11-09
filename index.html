@@ -9,9 +9,10 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
     <link rel="stylesheet" href="/src/styles/theme.css" />
     <link rel="stylesheet" href="/src/styles/storefront.css" />
+    <link rel="stylesheet" href="/src/styles/readability.css" />
   </head>
   <body>
     <div class="announcement"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><span>PAYMENT METHODS: GCASH · MARIBANK · PAYPAL · PNB BANK TRANSFER</span><span class="announcement-note">Payment proof is reviewed manually by staff</span></div>
@@ -23,10 +24,10 @@
     </header>
     <main>
       <section class="hero"><div class="hero-copy"><p class="eyebrow"><span class="live-dot"></span> CATALOG / HUSHLEY BILLIARDS</p><h1>GEAR FOR<br /><em>YOUR GAME.</em></h1><p class="hero-intro">Explore billiard cues, shafts, tips, chalk, cases, and accessories. Product details and availability are shown as provided in the current catalog.</p><div class="hero-actions"><a class="button button-primary" href="#products">EXPLORE THE CATALOG <span class="material-symbols-outlined" aria-hidden="true">arrow_downward</span></a><a class="button button-outline" href="#shop">BROWSE CATEGORIES</a></div><div class="hero-specs"><div><strong>01</strong><span>SHOP BY<br />CATEGORY</span></div><div><strong>02</strong><span>PRODUCT<br />SPECIFICATIONS</span></div><div><strong>03</strong><span>SECURE<br />CHECKOUT</span></div></div></div><div class="hero-art" role="img" aria-label="Billiard cue and shaft illustration on a dark surface"><div class="art-glow"></div><div class="hero-cue cue-one"></div><div class="hero-cue cue-two"></div><div class="hero-cue cue-three"></div><div class="art-orbit"></div><div class="art-caption"><span>HUSHLEY / BILLIARD EQUIPMENT</span><b>BUILT AROUND THE GAME</b></div><span class="art-index">HB—001</span></div></section>
-      <section class="catalog" id="products"><div class="catalog-heading"><div><p class="eyebrow">01 / BROWSE THE SHOP</p><h2>ALL PRODUCTS <span class="material-symbols-outlined" aria-hidden="true">north_east</span></h2></div><div class="catalog-count"><span class="live-dot"></span> PRODUCT CATALOG</div></div>
+      <section class="catalog" id="products"><div class="catalog-heading"><div><p class="eyebrow">01 / BROWSE THE SHOP</p><h2>ALL PRODUCTS <span class="material-symbols-outlined" aria-hidden="true">north_east</span></h2></div><div class="catalog-count"><span class="live-dot"></span> STAFF-PUBLISHED PRODUCTS</div></div>
         <div id="catalog-status" class="catalog-status" role="status" aria-live="polite" hidden></div>
         <div class="catalog-toolbar"><div class="filter-tabs" role="group" aria-label="Filter products"><button class="filter active" data-filter="All" aria-pressed="true">ALL PRODUCTS</button><button class="filter" data-filter="Cues" aria-pressed="false">CUES & SHAFTS</button><button class="filter" data-filter="Chalk" aria-pressed="false">CHALK</button><button class="filter" data-filter="Accessories" aria-pressed="false">ACCESSORIES</button></div><span class="toolbar-note"><span class="material-symbols-outlined" aria-hidden="true">tune</span> FILTER BY CATEGORY</span></div>
-        <div class="product-grid" id="product-grid" aria-live="polite" aria-busy="true"></div><p class="catalog-note">Catalog preview · Final product details, stock, and prices are provided by the store catalog.</p>
+        <div class="product-grid" id="product-grid" aria-live="polite" aria-busy="true"></div><p class="catalog-note">Only products added and published by store staff appear here.</p>
       </section>
       <section class="category-section" id="shop"><div class="section-title"><div><p class="eyebrow">02 / FIND YOUR SETUP</p><h2>SHOP BY CATEGORY</h2></div><span>SELECT A CATEGORY TO FILTER PRODUCTS ↗</span></div><div class="category-grid">
         <a class="category-card" href="#products" data-category="Cues"><span class="category-number">01 / CUES & SHAFTS</span><div class="category-art cat-shafts"><i></i><i></i><i></i></div><div class="category-foot"><h3>CUES & SHAFTS</h3><span class="material-symbols-outlined" aria-hidden="true">arrow_outward</span></div></a>

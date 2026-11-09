@@ -1,11 +1,7 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
-const previewProducts = [
-  { id: 'shaft', name: 'Hushley carbon shaft', category: 'Cues', image: 'shaft', tag: 'CARBON SHAFTS' },
-  { id: 'chalk', name: 'Hushley billiard chalk', category: 'Chalk', image: 'chalk', tag: 'BILLIARD CHALK' },
-  { id: 'tip', name: 'Billiard cue tip set', category: 'Accessories', image: 'chalk', tag: 'CUE TIPS' },
-];
-let products = [...previewProducts];
+let products = [];
+let categoryNames = new Map();
 let activeFilter = 'All';
 let searchTerm = '';
 let slowTimer;
@@ -36,6 +32,18 @@ function getProductOptions(product) {
 function formatSelectedOptions(options = {}) {
   return Object.entries(options).map(([name, value]) => `${escapeHtml(name)}: ${escapeHtml(value)}`).join(' · ');
 }
+function formatSpecification(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (Array.isArray(value)) return value.map(formatSpecification).filter(Boolean).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+function renderSpecifications(specifications = {}) {
+  if (!specifications || typeof specifications !== 'object' || Array.isArray(specifications)) return '';
+  const entries = Object.entries(specifications).map(([name, value]) => [name, formatSpecification(value)]).filter(([name, value]) => name.trim() && value);
+  if (!entries.length) return '';
+  return `<dl class="product-specifications" aria-label="Product specifications">${entries.map(([name, value]) => `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>`;
+}
 function cartKey(product, options = {}) {
   const entries = Object.entries(options).sort(([nameA], [nameB]) => nameA.localeCompare(nameB));
   return entries.length ? `${product.id}::${encodeURIComponent(JSON.stringify(entries))}` : String(product.id);
@@ -46,7 +54,7 @@ function setStatus(kind, message = '') {
   status.hidden = !kind;
 }
 function renderProducts() {
-  const visible = products.filter((item) => (activeFilter === 'All' || item.category === activeFilter) && `${item.name} ${item.category} ${item.description || ''} ${item.sku || ''}`.toLowerCase().includes(searchTerm));
+  const visible = products.filter((item) => (activeFilter === 'All' || item.filterCategory === activeFilter) && `${item.name} ${item.category} ${item.description || ''} ${item.sku || ''} ${JSON.stringify(item.specifications || {})}`.toLowerCase().includes(searchTerm));
   if (!visible.length) {
     grid.innerHTML = `<div class="empty-results"><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h3>${searchTerm ? 'NO MATCHES FOUND' : 'NOTHING IN THIS CATEGORY YET'}</h3><p>${searchTerm ? 'Try a different product name, category, or SKU.' : 'Choose another category to keep browsing.'}</p>${searchTerm ? '<button class="text-button" data-clear-search>Clear search</button>' : ''}</div>`;
     grid.setAttribute('aria-busy', 'false');
@@ -54,10 +62,11 @@ function renderProducts() {
   }
   grid.innerHTML = visible.map((item) => `
     <article class="product-card" data-product-card="${escapeHtml(item.id)}">
-      <div class="product-image"><span class="product-tag">${escapeHtml(item.tag)}</span><div class="product-visual">${item.image_urls?.[0] ? `<img class="product-photo" src="${escapeHtml(item.image_urls[0])}" alt="${escapeHtml(item.name)}" loading="lazy">` : art(item.image)}</div><button class="save-button ${saved.has(item.id) ? 'is-saved' : ''}" data-save="${escapeHtml(item.id)}" aria-label="${saved.has(item.id) ? 'Remove' : 'Save'} ${escapeHtml(item.name)}" aria-pressed="${saved.has(item.id)}"><span class="material-symbols-outlined" aria-hidden="true">${saved.has(item.id) ? 'favorite' : 'favorite_border'}</span></button></div>
-      <div class="product-meta"><span>${escapeHtml(item.category === 'Cues' ? 'CUES & SHAFTS' : item.category.toUpperCase())}</span><span class="stock-dot">${item.available_count === undefined ? 'CATALOG' : item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
-      <h3>${escapeHtml(item.name)}</h3><p class="product-description">${escapeHtml(item.description || 'Billiard gear for your game.')}</p>
-      <div class="spec-row"><span>SKU</span><strong>${escapeHtml(item.sku || 'DETAILS AT CHECKOUT')}</strong></div>
+      <div class="product-image"><span class="product-tag">${escapeHtml(item.tag)}</span><div class="product-visual"><img class="product-photo" src="${escapeHtml(item.image_urls[0])}" alt="${escapeHtml(item.name)}" loading="lazy"></div><button class="save-button ${saved.has(item.id) ? 'is-saved' : ''}" data-save="${escapeHtml(item.id)}" aria-label="${saved.has(item.id) ? 'Remove' : 'Save'} ${escapeHtml(item.name)}" aria-pressed="${saved.has(item.id)}"><span class="material-symbols-outlined" aria-hidden="true">${saved.has(item.id) ? 'favorite' : 'favorite_border'}</span></button></div>
+      <div class="product-meta"><span>${escapeHtml(item.category)}</span><span class="stock-dot">${item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
+      <h3>${escapeHtml(item.name)}</h3><p class="product-description">${escapeHtml(item.description)}</p>
+      ${item.sku ? `<div class="spec-row"><span>SKU</span><strong>${escapeHtml(item.sku)}</strong></div>` : ''}
+      ${renderSpecifications(item.specifications)}
       ${getProductOptions(item).length ? `<div class="product-options"><p class="option-heading">SELECT YOUR OPTIONS</p>${getProductOptions(item).map((option, index) => {
         const name = option.name.trim();
         const required = option.required !== false;
@@ -121,7 +130,7 @@ function addProduct(id, card) {
 }
 async function loadCatalog() {
   if (!isSupabaseConfigured) {
-    setStatus('notice', '<span class="material-symbols-outlined" aria-hidden="true">info</span><span>Preview catalog is shown. Connect the store catalog to see live products and stock.</span>');
+    setStatus('notice', '<span class="material-symbols-outlined" aria-hidden="true">info</span><span>The product catalog is not connected. Products appear here after staff add and publish them.</span>');
     renderProducts(); updateCart(); return;
   }
   renderSkeletons();
@@ -129,16 +138,31 @@ async function loadCatalog() {
   let isSlow = false;
   clearTimeout(slowTimer);
   slowTimer = setTimeout(() => { isSlow = true; setStatus('slow', '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span><span>This is taking a little longer. Your catalog is still loading.</span>'); }, 5000);
-  const { data, error } = await supabase.from('products').select('id,name,category_id,description,sku,price,stock_quantity,reserved_quantity,image_urls,is_active,options').eq('is_active', true).order('name');
+  const [productsResult, categoriesResult] = await Promise.all([
+    supabase.from('products').select('id,name,category_id,description,sku,price,stock_quantity,reserved_quantity,image_urls,is_active,options,specifications').eq('is_active', true).order('name'),
+    supabase.from('categories').select('id,name').eq('is_active', true),
+  ]);
   clearTimeout(slowTimer);
+  const { data, error } = productsResult;
   if (error) {
     setStatus('error', '<span class="material-symbols-outlined" aria-hidden="true">cloud_off</span><span>We could not load the catalog.</span><button class="status-retry" data-retry>Try again</button>');
     grid.innerHTML = '';
     console.error('Could not load catalog:', error.message);
     return;
   }
-  products = (data || []).map((product) => ({ ...product, available_count: product.stock_quantity - product.reserved_quantity, category: ['shafts', 'cues'].includes(product.category_id) ? 'Cues' : product.category_id === 'chalk' ? 'Chalk' : 'Accessories', tag: product.category_id.replaceAll('_', ' ').toUpperCase(), image: 'shaft' }));
-  setStatus('', '');
+  categoryNames = new Map((categoriesResult.data || []).map((category) => [category.id, category.name]));
+  const catalogRows = data || [];
+  products = catalogRows
+    .filter((product) => product.description?.trim() && product.image_urls?.some((url) => typeof url === 'string' && url.trim()))
+    .map((product) => ({
+      ...product,
+      available_count: product.stock_quantity - product.reserved_quantity,
+      category: categoryNames.get(product.category_id) || product.category_id,
+      filterCategory: ['shafts', 'cues'].includes(product.category_id) ? 'Cues' : product.category_id === 'chalk' ? 'Chalk' : 'Accessories',
+      tag: (categoryNames.get(product.category_id) || product.category_id).toUpperCase(),
+    }));
+  const hiddenIncomplete = catalogRows.length - products.length;
+  setStatus(hiddenIncomplete ? 'notice' : '', hiddenIncomplete ? `<span class="material-symbols-outlined" aria-hidden="true">info</span><span>${hiddenIncomplete} published product${hiddenIncomplete === 1 ? ' is' : 's are'} hidden until staff add a photo and description.</span>` : '');
   document.querySelector('.catalog-note').hidden = true;
   renderProducts(); updateCart();
 }

@@ -80,7 +80,7 @@ The owner has an existing Supabase project, GitHub repository, and Vercel accoun
 
 ## Working guidance
 
-Schema and rollout review: `supabase/migrations/20261109105526_hushley_shipping_options_payment_guards.sql` adds shipping reference rates and structured quote/actual-cost fields, validates option selections and hardens payment/stock transitions. The production project was migrated on 9 November 2026 and verified; see `PROJECT_CHECKLIST.md` and `supabase/SCHEMA_REVIEW.md`. Product shipping classes remain staff-assigned; mixed-cart and parcel calculations remain manual. The storefront and admin product configuration now use the existing schema; full flow verification is still pending.
+Schema and rollout review: `supabase/migrations/20261109105526_hushley_shipping_options_payment_guards.sql` adds shipping reference rates and structured quote/actual-cost fields, validates option selections and hardens payment/stock transitions. The production project was migrated on 9 November 2026 and verified; see `PROJECT_CHECKLIST.md` and `supabase/SCHEMA_REVIEW.md`. Product shipping classes remain staff-assigned; mixed-cart and parcel calculations remain manual. Admin-managed Supabase catalog data is the storefront source of truth. Admin supports images, descriptions, options, specifications, and publishing; the storefront only displays active products with an image and description. Readable system-font overrides are in `src/styles/readability.css`. Full authenticated flow verification is still pending.
 
 1. Preserve existing user-facing behavior unless the requested change requires otherwise.
 2. Treat pricing, shipping, and payment decisions above as requirements; ask only when an unresolved business rule affects the implementation.

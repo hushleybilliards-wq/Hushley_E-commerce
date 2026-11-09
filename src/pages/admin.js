@@ -7,11 +7,20 @@ const gateMessage = $('#gate-message');
 const adminStatus = $('#admin-status');
 let categories = [];
 let ordersCache = [];
+let productsCache = [];
 let authorized = false;
 const currency = (amount) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(amount || 0));
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 const safeSlug = (value) => value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const shippingClasses = new Map([['small_items', 'Small items'], ['cue', 'Billiard cue'], ['ball_set', 'Billiard ball set']]);
+async function uploadProductImage(image) {
+  if (!image) return null;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(image.type)) throw new Error('Product image must be JPG, PNG, or WebP.');
+  const path = `catalog/${crypto.randomUUID()}-${safeSlug(image.name)}`;
+  const { error } = await supabase.storage.from('product-images').upload(path, image, { upsert: false });
+  if (error) throw error;
+  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+}
 function say(message, kind = '') { adminStatus.textContent = message; adminStatus.dataset.kind = kind; }
 function parseProductConfiguration(optionsText, specificationsText, shippingClassValue) {
   let options; let specifications;
@@ -158,10 +167,11 @@ function toLocalInput(value) { return value ? new Date(value).toISOString().slic
 async function loadProducts() {
   const host = $('#products-body');
   rowMessage(host, 5, 'Loading products…');
-  const { data, error } = await supabase.from('products').select('id,name,description,sku,category_id,price,stock_quantity,reserved_quantity,is_active,low_stock_threshold,options,specifications,shipping_class').order('name');
+  const { data, error } = await supabase.from('products').select('id,name,description,sku,category_id,price,stock_quantity,reserved_quantity,image_urls,is_active,low_stock_threshold,options,specifications,shipping_class').order('name');
   if (error) { rowMessage(host, 5, failureMessage(error, 'Products'), 'products'); say(failureMessage(error, 'Products'), 'error'); return; }
+  productsCache = data || [];
   if (!data.length) { rowMessage(host, 5, 'No products yet. Add the first product to start the catalog.'); return; }
-  host.innerHTML = data.map((product) => `<tr><td><input class="row-edit" value="${escapeHtml(product.name)}" data-product-name="${product.id}" aria-label="Product name"/><details class="row-details"><summary>DESCRIPTION, SKU &amp; PRODUCT CONFIG</summary><label>Description<textarea class="row-edit" data-product-description="${product.id}" rows="3" aria-label="Description">${escapeHtml(product.description)}</textarea></label><label>SKU<input class="row-edit" value="${escapeHtml(product.sku || '')}" data-product-sku="${product.id}" placeholder="SKU" aria-label="SKU"/></label><label>Options JSON<textarea class="row-edit product-json-edit" data-product-options="${product.id}" rows="6" spellcheck="false" aria-label="Product options JSON">${escapeHtml(JSON.stringify(product.options || [], null, 2))}</textarea></label><label>Specifications JSON<textarea class="row-edit product-json-edit" data-product-specifications="${product.id}" rows="5" spellcheck="false" aria-label="Specifications JSON">${escapeHtml(JSON.stringify(product.specifications || {}, null, 2))}</textarea></label><label>Shipping class<select class="row-select" data-product-shipping-class="${product.id}" aria-label="Shipping class"><option value="" ${!product.shipping_class ? 'selected' : ''}>Unclassified — staff review</option>${[...shippingClasses].map(([value, label]) => `<option value="${value}" ${product.shipping_class === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><small>Each option uses a name, a list of text values, and an optional required flag (defaults to required).</small></details><small>${product.id.slice(0,8)}</small></td><td><select class="row-select" data-product-category="${product.id}" aria-label="Category">${categories.map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === product.category_id ? 'selected' : ''}>${escapeHtml(category.name)}${category.is_active ? '' : ' (inactive)'}</option>`).join('')}</select></td><td><input class="row-edit price-edit" type="number" min="0" step="0.01" value="${Number(product.price)}" data-product-price="${product.id}" aria-label="Price"/></td><td><span>${product.stock_quantity - product.reserved_quantity} available · ${product.reserved_quantity} reserved</span><small class="stock-edit"><input type="number" min="${product.reserved_quantity}" value="${product.stock_quantity}" data-stock-value="${product.id}" aria-label="Stock quantity"/><button data-save-stock="${product.id}">SAVE STOCK</button></small></td><td><label class="publish-edit"><input type="checkbox" data-product-published="${product.id}" ${product.is_active?'checked':''}/> PUBLISHED</label>${product.stock_quantity <= product.low_stock_threshold ? '<small class="low-stock-note">LOW STOCK</small>' : ''}<button class="admin-action product-save" data-save-product="${product.id}">SAVE PRODUCT</button></td></tr>`).join('');
+  host.innerHTML = data.map((product) => `<tr><td><input class="row-edit" value="${escapeHtml(product.name)}" data-product-name="${product.id}" aria-label="Product name"/><details class="row-details"><summary>DESCRIPTION, PHOTOS &amp; PRODUCT DETAILS</summary><label>Description<textarea class="row-edit" data-product-description="${product.id}" rows="3" aria-label="Description">${escapeHtml(product.description)}</textarea></label><label>SKU<input class="row-edit" value="${escapeHtml(product.sku || '')}" data-product-sku="${product.id}" placeholder="SKU" aria-label="SKU"/></label>${product.image_urls?.[0] ? `<img class="admin-product-image-preview" src="${escapeHtml(product.image_urls[0])}" alt="Current photo of ${escapeHtml(product.name)}"/>` : '<span class="missing-product-image">No product image uploaded yet.</span>'}<label>Replace product image<input class="row-edit" type="file" accept="image/jpeg,image/png,image/webp" data-product-image="${product.id}" aria-label="Replace product image"/></label><label>Options JSON<textarea class="row-edit product-json-edit" data-product-options="${product.id}" rows="6" spellcheck="false" aria-label="Product options JSON">${escapeHtml(JSON.stringify(product.options || [], null, 2))}</textarea></label><label>Specifications JSON<textarea class="row-edit product-json-edit" data-product-specifications="${product.id}" rows="5" spellcheck="false" aria-label="Specifications JSON">${escapeHtml(JSON.stringify(product.specifications || {}, null, 2))}</textarea></label><label>Shipping class<select class="row-select" data-product-shipping-class="${product.id}" aria-label="Shipping class"><option value="" ${!product.shipping_class ? 'selected' : ''}>Unclassified — staff review</option>${[...shippingClasses].map(([value, label]) => `<option value="${value}" ${product.shipping_class === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><small>Enter sizes and item-specific details in Specifications JSON. Each option uses a name, text values, and an optional required flag.</small></details><small>${product.id.slice(0,8)}</small></td><td><select class="row-select" data-product-category="${product.id}" aria-label="Category">${categories.map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === product.category_id ? 'selected' : ''}>${escapeHtml(category.name)}${category.is_active ? '' : ' (inactive)'}</option>`).join('')}</select></td><td><input class="row-edit price-edit" type="number" min="0" step="0.01" value="${Number(product.price)}" data-product-price="${product.id}" aria-label="Price"/></td><td><span>${product.stock_quantity - product.reserved_quantity} available · ${product.reserved_quantity} reserved</span><small class="stock-edit"><input type="number" min="${product.reserved_quantity}" value="${product.stock_quantity}" data-stock-value="${product.id}" aria-label="Stock quantity"/><button data-save-stock="${product.id}">SAVE STOCK</button></small></td><td><label class="publish-edit"><input type="checkbox" data-product-published="${product.id}" ${product.is_active?'checked':''}/> PUBLISHED</label>${product.stock_quantity <= product.low_stock_threshold ? '<small class="low-stock-note">LOW STOCK</small>' : ''}<button class="admin-action product-save" data-save-product="${product.id}">SAVE PRODUCT</button></td></tr>`).join('');
 }
 async function loadCategories() {
   const host = $('#categories-body');
@@ -207,15 +217,16 @@ $('#product-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget; const status = $('.form-status', form); const button = $('button[type="submit"]', form);
   const values = new FormData(form); const name = String(values.get('name')).trim(); const slug = safeSlug(name); const price = Number(values.get('price')); const stock = Number(values.get('stock_quantity'));
-  if (!name || !slug || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0) { status.textContent = 'Enter a valid name, non-negative price, and whole-number stock quantity.'; return; }
+  const description = String(values.get('description') || '').trim();
+  const image = values.get('image');
+  if (!name || !slug || !description || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0 || !image?.size) { status.textContent = 'Enter a name, description, valid price and stock, and upload a product image.'; return; }
   let productConfig;
   try { productConfig = parseProductConfiguration(String(values.get('options') || '[]'), String(values.get('specifications') || '{}'), String(values.get('shipping_class') || '')); }
   catch (error) { status.textContent = error.message; form.elements[error.message.includes('Specifications') ? 'specifications' : 'options'].focus(); return; }
   button.disabled = true; status.textContent = 'Saving product…';
-  let imageUrls = []; const image = values.get('image');
   try {
-    if (image?.size) { const path = `catalog/${crypto.randomUUID()}-${safeSlug(image.name)}`; const { error: uploadError } = await supabase.storage.from('product-images').upload(path, image, { upsert: false }); if (uploadError) throw uploadError; imageUrls = [supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl]; }
-    const { data: product, error } = await supabase.from('products').insert({ category_id: values.get('category_id'), slug, name, description: String(values.get('description') || ''), sku: String(values.get('sku') || '').trim() || null, price, stock_quantity: 0, image_urls: imageUrls, is_active: values.get('is_active') === 'on', ...productConfig }).select('id').single();
+    const imageUrl = await uploadProductImage(image);
+    const { data: product, error } = await supabase.from('products').insert({ category_id: values.get('category_id'), slug, name, description, sku: String(values.get('sku') || '').trim() || null, price, stock_quantity: 0, image_urls: [imageUrl], is_active: values.get('is_active') === 'on', ...productConfig }).select('id').single();
     if (error) throw error;
     if (stock > 0) { const { error: stockError } = await supabase.rpc('admin_set_product_stock', { p_product_id: product.id, p_quantity: stock, p_note: 'Opening stock' }); if (stockError) throw stockError; }
     form.reset(); form.hidden = true; say('Product saved.', 'success'); await Promise.all([loadProducts(), loadMetrics(), loadInventory()]);
@@ -243,7 +254,7 @@ $('#orders-body').addEventListener('click', async (event) => {
     shippingSave.disabled = true; shippingSave.textContent = 'SAVING…';
     const { error } = await supabase.rpc('admin_confirm_order_shipping', { p_order_id: orderId, p_region: region, p_fee: fee, p_quote_note: quoteNote || null });
     shippingSave.disabled = false; shippingSave.textContent = 'CONFIRM SHIPPING';
-    if (error) say(/admin_confirm_order_shipping|function.*not found|schema cache/i.test(error.message) ? 'Shipping confirmation requires the reviewed local migration, which is not yet applied to the connected database. No change was saved.' : failureMessage(error, 'Shipping confirmation'), 'error');
+    if (error) say(/admin_confirm_order_shipping|function.*not found|schema cache/i.test(error.message) ? 'Shipping confirmation is unavailable. Refresh and verify the Supabase connection; no change was saved.' : failureMessage(error, 'Shipping confirmation'), 'error');
     else { say('Shipping quote confirmed. The order total follows the stored quote.', 'success'); await loadOrders(); } return;
   }
   const actualSave = event.target.closest('[data-save-actual]');
@@ -256,7 +267,7 @@ $('#orders-body').addEventListener('click', async (event) => {
     actualSave.disabled = true; actualSave.textContent = 'SAVING…';
     const { error } = await supabase.rpc('admin_record_shipping_actual', { p_order_id: orderId, p_actual_fee: fee, p_receipt_reference: receipt || null, p_customer_emailed_at: emailAt, p_note: settlementNote || null, p_settled_at: settledAt });
     actualSave.disabled = false; actualSave.textContent = 'SAVE ACTUAL COST / SETTLEMENT';
-    if (error) say(/admin_record_shipping_actual|function.*not found|schema cache/i.test(error.message) ? 'Actual-cost records require the reviewed local migration, which is not yet applied to the connected database. No change was saved.' : failureMessage(error, 'Actual shipping record'), 'error');
+    if (error) say(/admin_record_shipping_actual|function.*not found|schema cache/i.test(error.message) ? 'Actual-cost recording is unavailable. Refresh and verify the Supabase connection; no change was saved.' : failureMessage(error, 'Actual shipping record'), 'error');
     else { const adjust = Number(fee) - Number(order?.estimated_shipping_fee ?? order?.shipping_fee ?? 0); say(`Actual shipping cost saved. ${adjust < 0 ? `Excess shipping refund due: ${currency(Math.abs(adjust))}.` : adjust > 0 ? `External balance due: ${currency(adjust)}.` : 'No shipping adjustment.'} Handle any email/refund/balance outside this website.`, 'success'); await loadOrders(); } return;
   }
   const stockSave = event.target.closest('[data-save-stock]');
@@ -274,13 +285,22 @@ $('#orders-body').addEventListener('click', async (event) => {
   }
   const productSave = event.target.closest('[data-save-product]');
   if (productSave) {
-    const id = productSave.dataset.saveProduct; const name = $(`[data-product-name="${id}"]`).value.trim(); const sku = $(`[data-product-sku="${id}"]`).value.trim(); const description = $(`[data-product-description="${id}"]`).value.trim(); const categoryId = $(`[data-product-category="${id}"]`).value; const priceInput = $(`[data-product-price="${id}"]`); const price = Number(priceInput.value); const isActive = $(`[data-product-published="${id}"]`).checked;
-    if (!name || !safeSlug(name) || !priceInput.value.trim() || !Number.isFinite(price) || price < 0) return say('Enter a product name and valid non-negative price.', 'error');
+    const id = productSave.dataset.saveProduct; const name = $(`[data-product-name="${id}"]`).value.trim(); const sku = $(`[data-product-sku="${id}"]`).value.trim(); const description = $(`[data-product-description="${id}"]`).value.trim(); const categoryId = $(`[data-product-category="${id}"]`).value; const priceInput = $(`[data-product-price="${id}"]`); const price = Number(priceInput.value); const isActive = $(`[data-product-published="${id}"]`).checked; const existingProduct = productsCache.find((product) => product.id === id); const imageInput = $(`[data-product-image="${id}"]`); const replacementImage = imageInput.files?.[0];
+    if (!name || !safeSlug(name) || !description || !priceInput.value.trim() || !Number.isFinite(price) || price < 0) return say('Enter a product name, description, and valid non-negative price.', 'error');
+    if (isActive && !replacementImage && !existingProduct?.image_urls?.some((url) => typeof url === 'string' && url.trim())) return say('Upload a product image before publishing it to the storefront.', 'error');
     let productConfig;
     try { productConfig = parseProductConfiguration($(`[data-product-options="${id}"]`).value, $(`[data-product-specifications="${id}"]`).value, $(`[data-product-shipping-class="${id}"]`).value); }
     catch (error) { say(error.message, 'error'); $(`[data-product-options="${id}"]`).focus(); return; }
-    productSave.disabled = true; productSave.textContent = 'SAVING…'; const { error } = await supabase.from('products').update({ name, slug: safeSlug(name), sku: sku || null, description, category_id: categoryId, price, is_active: isActive, ...productConfig }).eq('id', id); productSave.disabled = false; productSave.textContent = 'SAVE PRODUCT';
-    if (error) say(failureMessage(error, 'Product update'), 'error'); else { say('Product updated.', 'success'); await Promise.all([loadProducts(), loadMetrics()]); } return;
+    productSave.disabled = true; productSave.textContent = 'SAVING…';
+    try {
+      let imageUrls = existingProduct?.image_urls || [];
+      if (replacementImage) imageUrls = [await uploadProductImage(replacementImage), ...imageUrls.slice(1)];
+      const { error } = await supabase.from('products').update({ name, slug: safeSlug(name), sku: sku || null, description, category_id: categoryId, price, image_urls: imageUrls, is_active: isActive, ...productConfig }).eq('id', id);
+      if (error) throw error;
+      say('Product updated.', 'success'); await Promise.all([loadProducts(), loadMetrics()]);
+    } catch (error) { say(failureMessage(error, 'Product update'), 'error'); }
+    finally { productSave.disabled = false; productSave.textContent = 'SAVE PRODUCT'; }
+    return;
   }
   const categorySave = event.target.closest('[data-save-category]');
   if (categorySave) {

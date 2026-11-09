@@ -6,7 +6,7 @@ Last reviewed: 9 November 2026 (Asia/Manila)
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Storefront and admin UI | In progress | Variation selection and admin product configuration are implemented locally; production build passes. Storefront still needs approved catalog items. |
+| Storefront and admin UI | In progress | Admin product create/edit supports images, descriptions, SKU, options, specifications, pricing, stock, and publish state. Storefront displays only active, complete products from Supabase. Readability stylesheet uses a conventional system font. Production build passes; authenticated UI flow remains to verify. |
 | Supabase production schema | Complete | Three local migrations applied; remote history matches local. Core tables, RPC signature, and private proof bucket verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
 | GitHub source | Complete | Reviewed project is published to the existing public repository on `main`. Remote head verified at `77640ca`; `.env`, `dist/`, and `node_modules/` are excluded. |
@@ -40,7 +40,10 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## 3. Catalog and product configuration
 
-- [ ] Replace demo/preview products with client-approved product names, prices, descriptions, images, stock counts, and active status.
+- [x] Remove hard-coded preview products from storefront; catalog content comes from Supabase.
+- [x] Require a product description and image before an admin-created product can be published; storefront excludes incomplete products.
+- [x] Support admin editing of product name, description, SKU, category, image, options, specifications, price, stock, shipping class, and published state.
+- [ ] Enter client-approved product names, prices, descriptions, images, stock counts, and active status in the admin panel.
 - [ ] Assign shipping classes (`small_items`, `cue`, `ball_set`) to products that staff have reviewed.
 - [ ] Confirm each product's options (for example cue length, color, or tip hardness) and whether each option is required.
 - [x] Build product variation selection into the storefront; required/optional choices persist with cart lines and checkout.
@@ -59,7 +62,7 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## 5. Admin operations
 
-- [ ] Create the business owner/admin account.
+- [ ] Create/sign up the business owner account `hushleybilliards@gmail.com` through the account page and confirm the email. Production Supabase currently has no matching Auth account, so the admin role cannot yet be assigned.
 - [ ] Assign the trusted `app_metadata.role = 'admin'` claim in Supabase, then sign out and back in to refresh the JWT.
 - [ ] Confirm non-admin accounts cannot access admin pages or admin RPC actions.
 - [ ] Test manual payment approval/rejection, stock adjustments, order status changes, shipping quote confirmation, and tracking entry.
