@@ -9,15 +9,15 @@ Last reviewed: 9 November 2026 (Asia/Manila)
 | Storefront and admin UI | In progress | Variation selection and admin product configuration are implemented locally; production build passes. Storefront still needs approved catalog items. |
 | Supabase production schema | Complete | Three local migrations applied; remote history matches local. Core tables, RPC signature, and private proof bucket verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Blocked | A reviewed initial commit exists locally on `main` (`f7180a7`), but GitHub rejected the push with HTTP 403 for authenticated identity `militantezeandrei-ops`. Grant that identity write access or authenticate with an authorized GitHub account, then push. |
+| GitHub source | Complete | Reviewed project is published to the existing public repository on `main`. Remote head verified at `77640ca`; `.env`, `dist/`, and `node_modules/` are excluded. |
 | Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
 ## 1. Source control and deployment
 
-- [ ] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git`.
+- [x] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git` (`main`).
 - [x] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
-- [ ] Push the reviewed initial commit (`f7180a7`) from local `main` to the GitHub repository after write access is granted. The first push attempt returned HTTP 403.
+- [x] Publish the reviewed project to the existing public GitHub repository; remote branch `main` was verified at `77640ca`.
 - [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible.
 - [ ] Configure Vercel production environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a Supabase secret/service-role key in a `VITE_*` variable.
 - [ ] Deploy a preview and verify storefront, account, checkout, and admin routes.
@@ -77,6 +77,6 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## Current external blockers
 
-1. The GitHub remote exists but has no branches; current local project files have not been published there.
-2. The connected Vercel account has no Hushley project or deployment. The correct client team/project must be made accessible or identified before deploying.
-3. Approved catalog data, product option details, production domain, and administrator account details are needed for launch configuration and full-flow verification.
+1. The connected Vercel account has no Hushley project or deployment for this GitHub repo. The correct client team/project must be made accessible before deploying.
+2. The production catalog is empty: no products are seeded yet. The client must supply approved catalog content, prices, images, variants, stock, and shipping classifications.
+3. The production domain and administrator account are not yet configured; Auth redirects and end-to-end flow verification depend on them.
