@@ -1,0 +1,42 @@
+:root {
+  color-scheme: dark;
+  --ui-bg: #090a0f;
+  --ui-surface: #12141c;
+  --ui-surface-raised: #1a1d27;
+  --ui-surface-deep: #0d0e13;
+  --ui-border: #222634;
+  --ui-border-strong: #3c4a42;
+  --ui-text: #f1f5f9;
+  --ui-text-muted: #94a3b8;
+  --ui-text-subtle: #64748b;
+  --ui-primary: #4edea3;
+  --ui-primary-strong: #10b981;
+  --ui-primary-ink: #003824;
+  --ui-gold: #ffca45;
+  --ui-warning: #f7be1d;
+  --ui-danger: #fca5a5;
+  --ui-success: #6ffbbe;
+  --ui-radius-sm: 0.25rem;
+  --ui-radius-md: 0.5rem;
+  --ui-radius-lg: 0.75rem;
+  --ui-gutter: 1.5rem;
+  --ui-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+  --ui-fast: 140ms;
+  --ui-medium: 220ms;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+@media (max-width: 600px) {
+  :root { --ui-gutter: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,69 @@
+/* Account and checkout refinements, scoped to these two page layouts. */
+.account-wrap, .checkout-wrap { animation: page-enter 360ms var(--ui-ease) both; }
+.account-card, .checkout-panel, .checkout-order {
+  background: linear-gradient(145deg, rgba(26,29,39,.92), rgba(13,14,19,.98));
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: 0 18px 48px rgba(0,0,0,.2);
+}
+.account-card h1, .checkout-panel h1 { color: var(--ui-text); font-weight: 800; }
+.eyebrow { color: var(--ui-primary); letter-spacing: .13em; }
+.account-lead { color: var(--ui-text-muted); }
+.auth-field, .checkout-grid label { color: #cbd5e1; }
+.auth-field input, .checkout-grid input, .checkout-grid select, .checkout-grid textarea {
+  background: var(--ui-surface-deep); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm);
+  color: var(--ui-text); transition: border-color var(--ui-fast) var(--ui-ease), box-shadow var(--ui-fast) var(--ui-ease);
+}
+.auth-field input:focus, .checkout-grid input:focus, .checkout-grid select:focus, .checkout-grid textarea:focus,
+.proof-upload input:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--ui-primary); outline-offset: 2px;
+}
+.auth-field input:focus, .checkout-grid input:focus, .checkout-grid select:focus, .checkout-grid textarea:focus {
+  border-color: var(--ui-primary); box-shadow: 0 0 0 3px rgba(78,222,163,.1);
+}
+.button, .admin-action, .order-history-head button, .auth-switch button, .forgot-password {
+  transition: transform var(--ui-fast) var(--ui-ease), border-color var(--ui-fast) var(--ui-ease), background var(--ui-fast) var(--ui-ease), color var(--ui-fast) var(--ui-ease);
+}
+.button:hover:not(:disabled), .admin-action:hover:not(:disabled) { transform: translateY(-1px); }
+button:disabled { cursor: wait; opacity: .62; }
+.form-status { min-height: 1.35em; color: var(--ui-text-muted); line-height: 1.5; }
+.form-status[data-kind="error"], .state-error { color: var(--ui-danger); }
+.form-status[data-kind="success"] { color: var(--ui-success); }
+.connection-state, .config-alert, .shipping-note, .slow-note, .state-error {
+  border: 1px solid var(--ui-border); border-left: 3px solid var(--ui-primary-strong); border-radius: var(--ui-radius-sm);
+  background: rgba(18,20,28,.9); color: var(--ui-text-muted); padding: 12px 14px; font-size: 12px; line-height: 1.6;
+}
+.connection-state[data-kind="error"], .state-error { border-left-color: #f87171; }
+.connection-state[data-kind="success"] { border-left-color: var(--ui-primary); color: var(--ui-success); }
+.config-alert { border-left-color: var(--ui-gold); }
+.order-history { border-color: var(--ui-border); }
+.order-history-head h2 { color: var(--ui-text); }
+.order-row { border-color: var(--ui-border); }
+.order-row > div:first-child span, .order-row small, .empty-orders { color: var(--ui-text-muted); }
+.status-pill { border-color: var(--ui-border-strong); }
+.proof-upload { flex-wrap: wrap; background: rgba(26,29,39,.8); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); }
+.proof-upload label { display: grid; gap: 8px; color: var(--ui-text-muted); font-size: 11px; }
+.proof-upload input { display: block; color: var(--ui-text-muted); font: inherit; }
+.state-loading { color: var(--ui-text-muted); padding: 14px 0; }
+.state-error { padding: 12px 14px; }
+.state-error p { margin: 0 0 10px; }
+.slow-note { border-left-color: var(--ui-gold); margin: 8px 0; }
+.checkout-panel { padding: clamp(22px, 3vw, 34px); }
+.checkout-order { padding: 22px; }
+.checkout-summary { border-color: var(--ui-border); color: var(--ui-text-muted); }
+.checkout-summary strong, .checkout-item strong { color: var(--ui-text); }
+.checkout-item { border-color: var(--ui-border); }
+.shipping-note { margin-top: 5px; }
+.checkout-order .text-link { color: var(--ui-primary); }
+
+@keyframes page-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) {
+  .account-card, .checkout-panel, .checkout-order { border-radius: var(--ui-radius-sm); }
+  .proof-upload { align-items: stretch; }
+  .proof-upload .admin-action { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-wrap, .checkout-wrap { animation: none; }
+  .button, .admin-action, .order-history-head button, .auth-switch button, .forgot-password,
+  .auth-field input, .checkout-grid input, .checkout-grid select, .checkout-grid textarea { transition: none; }
+}

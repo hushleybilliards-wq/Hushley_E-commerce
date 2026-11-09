@@ -1,0 +1,876 @@
+<!DOCTYPE html><html class="dark" lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {"darkMode":"class","theme":{"extend":{"colors":{"surface-container":"#1e1f25","on-tertiary-fixed":"#2a1700","outline":"#86948a","on-surface":"#e3e1e9","on-error":"#690005","surface-tint":"#4edea3","inverse-surface":"#e3e1e9","tertiary-fixed":"#ffddb8","error":"#ffb4ab","on-secondary-container":"#5b4400","tertiary-container":"#e29100","on-primary-fixed":"#002113","primary-fixed-dim":"#4edea3","secondary-fixed-dim":"#f7be1d","inverse-on-surface":"#2f3036","on-primary-fixed-variant":"#005236","primary-container":"#10b981","on-secondary-fixed":"#251a00","on-primary":"#003824","error-container":"#93000a","inverse-primary":"#006c49","outline-variant":"#3c4a42","surface-bright":"#38393f","primary":"#4edea3","surface-container-low":"#1a1b21","surface-dim":"#121318","on-secondary-fixed-variant":"#5a4300","on-surface-variant":"#bbcabf","on-tertiary-fixed-variant":"#653e00","surface-variant":"#34343a","surface-container-lowest":"#0d0e13","on-tertiary-container":"#523200","on-secondary":"#3f2e00","secondary":"#ffca45","surface-container-high":"#292a2f","on-primary-container":"#00422b","on-error-container":"#ffdad6","surface":"#121318","tertiary-fixed-dim":"#ffb95f","secondary-fixed":"#ffdf9a","secondary-container":"#e4ae00","surface-container-highest":"#34343a","tertiary":"#ffb95f","on-background":"#e3e1e9","on-tertiary":"#472a00","background":"#121318","primary-fixed":"#6ffbbe"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-md":"1rem","space-xs":"0.25rem","space-lg":"1.5rem","gutter-mobile":"0.75rem","gutter":"1.5rem","space-xl":"2.5rem","margin":"3rem","margin-mobile":"1rem","space-sm":"0.5rem"},"fontFamily":{"label-technical":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"label-lg":["Plus Jakarta Sans"],"title-md":["Plus Jakarta Sans"],"body-lg":["Plus Jakarta Sans"],"headline-sm":["Syne"],"display-hero-mobile":["Syne"],"label-md":["Plus Jakarta Sans"],"display-hero":["Syne"],"headline-lg":["Syne"],"headline-lg-mobile":["Syne"],"headline-md":["Syne"]},"fontSize":{"label-technical":["11px",{"lineHeight":"14px","letterSpacing":"0.08em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"600"}],"title-md":["18px",{"lineHeight":"26px","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"600"}],"display-hero-mobile":["36px",{"lineHeight":"44px","letterSpacing":"-0.01em","fontWeight":"800"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"600"}],"display-hero":["56px",{"lineHeight":"64px","letterSpacing":"-0.02em","fontWeight":"800"}],"headline-lg":["40px",{"lineHeight":"48px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-lg-mobile":["28px",{"lineHeight":"36px","letterSpacing":"-0.01em","fontWeight":"700"}],"headline-md":["28px",{"lineHeight":"36px","fontWeight":"600"}]}}}};</script><style id="refined-typography-scheme" class="">h1, h2, h3, .font-headline-lg, .font-headline-md, .font-headline-sm, .font-display-hero, .font-title-md { color: #FFFFFF !important; }
+.font-headline-md { color: #FFFFFF !important; }
+.text-primary.font-extrabold { color: #FFFFFF !important; }
+.font-headline-sm.text-primary { color: #FFFFFF !important; }
+.text-on-surface { color: #F1F5F9 !important; }
+.text-on-surface-variant { color: #94A3B8 !important; }
+.text-outline { color: #64748B !important; }
+a.text-on-surface-variant, span.text-on-surface-variant, p.text-on-surface-variant { color: #94A3B8 !important; }
+.price-stock-pill { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 11px; line-height: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 9999px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #F1F5F9; }
+.price-stock-pill.low-stock { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #FCA5A5; }
+.price-display, .font-headline-md.text-white, .font-title-md.text-primary.font-bold, .cart-price, .font-headline-sm.text-primary.font-bold { font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif !important; font-variant-numeric: tabular-nums !important; letter-spacing: -0.02em !important; font-weight: 800 !important; color: #FFFFFF !important; text-rendering: geometricPrecision; }</style></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.6)]"><div class="w-full bg-surface-container-low px-gutter-mobile lg:px-margin py-space-xs"><div class="max-w-[1440px] mx-auto flex items-center justify-between text-secondary font-label-technical text-label-technical"><div class="flex items-center gap-space-sm overflow-hidden text-ellipsis whitespace-nowrap"><span class="material-symbols-outlined text-secondary text-[14px]">verified_user</span><span class="tracking-wider uppercase">Strict Pre-Payment (GCash / MariBank / PayPal / PNB) • 100% Advance Payment Required • Same-Day Dispatch available via Lalamove &amp; Nationwide Courier</span></div><div class="hidden md:flex items-center gap-space-md text-on-surface-variant font-label-md text-label-md"><span class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined text-[13px]">bolt</span> Dispatch Ready</span><span class="text-outline-variant">|</span><span class="text-secondary font-semibold">Zero-COD Policy Protected</span></div></div></div><div class="h-28 w-full px-gutter-mobile lg:px-margin"><div class="max-w-[1440px] mx-auto h-full flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md"><a class="flex items-center gap-space-sm group" data-path="catalog" href="#"><img alt="Hushley Billiards Monogram Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrCbLcp4-wie9Afj59u8oD78DwLfeSfBAhfh0j8odaAV1yo5bMk1xiRN00RcUNewCXCnycsfzHCMasOdadF7njhnILnRYaH3w5rM1cdX1wQv_PMguJuNC2-6aHXfw54nJjCS0sm7vQ7gUQLSFIPRWoPbZiuQcPvO0BlL3bZvgq59Ud8cFseGRYU8Y2tENTqwY5jimknQ4mCo9SB-RJTh_xWm3rXgk2QELw5rgq8_edA"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface group-hover:text-primary transition-colors">HUSHLEY BILLIARDS</span><span class="font-label-technical text-label-technical text-secondary tracking-widest uppercase">Precision Tournament Equipment &amp; Accessories</span></div></a></div><div class="hidden xl:flex flex-1 max-w-md mx-space-lg"><div class="relative w-full flex items-center"><span class="material-symbols-outlined absolute left-3 text-outline text-[18px]">search</span><input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-4 py-space-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Search shafts, tips, joint pins (e.g., Radial, 12.4mm)..." type="text"></div></div><div class="flex items-center gap-space-md"><div class="hidden sm:flex items-center bg-surface-container px-space-sm py-1 rounded-lg text-secondary font-label-technical text-label-technical"><span class="mr-1 text-on-surface-variant">CURRENCY:</span> PHP (₱)</div><a class="hidden lg:flex items-center gap-1 text-on-surface-variant hover:text-on-surface font-label-md text-label-md px-space-sm py-1.5 rounded-lg bg-surface-container-low transition-colors" data-path="track-order" href="#"><span class="material-symbols-outlined text-[16px] text-primary">local_shipping</span>Track Order</a><button class="relative flex items-center gap-space-xs bg-surface-container px-space-md py-space-sm rounded-lg hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-primary text-[20px]">shopping_bag</span><span class="hidden md:inline font-label-lg text-label-lg text-on-surface">Cart</span><span class="inline-flex items-center justify-center bg-primary text-on-primary font-label-technical text-label-technical px-1.5 py-0.5 rounded-full">3 items</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div><div class="w-full bg-surface-container-low/80"><div class="max-w-[1440px] mx-auto px-gutter-mobile lg:px-margin"><nav class="flex items-center gap-space-lg overflow-x-auto py-space-xs" data-active-classes="text-primary font-bold"><a aria-current="page" class="whitespace-nowrap uppercase tracking-wider transition-colors text-primary font-bold" data-path="catalog" href="#">Catalog / All Products</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors" data-path="billiard-cues" href="#">Billiard Cues</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors" data-path="carbon-shafts" href="#">Carbon Shafts</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors" data-path="tips-chalk" href="#">Tips &amp; Chalk</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors" data-path="accessories" href="#">Accessories</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors" data-path="track-order" href="#">Track Order</a><a class="text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap uppercase tracking-wider transition-colors text-secondary" data-path="admin-portal" href="#">Admin Portal</a></nav></div></div></header><main class="w-full pt-28 bg-surface"><div class="flex flex-col w-full">
+<!-- Interactive Cart Slide-out Drawer Overlay -->
+<div class="fixed inset-0 bg-surface-container-lowest/80 backdrop-blur-md z-[60] transition-opacity duration-300 opacity-0 pointer-events-none" id="cartDrawerBackdrop"></div>
+<aside class="fixed top-0 right-0 w-full max-w-md h-full bg-surface-container-low shadow-2xl z-[70] flex flex-col transform translate-x-full transition-transform duration-300 ease-out" id="cartDrawer">
+<!-- Drawer Header -->
+<div class="p-space-lg bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[24px]">shopping_bag</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm uppercase tracking-wide text-on-surface">Your Cart</h2>
+<span class="font-label-technical text-label-technical text-secondary uppercase tracking-widest">3 Precision Articles Reserved</span>
+</div>
+</div>
+<button class="w-9 h-9 rounded-lg bg-surface-container-high hover:bg-surface-variant flex items-center justify-center text-on-surface transition-colors" id="closeCartBtn" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Pre-Payment Strict Protocol Notice -->
+<div class="mx-space-lg mt-space-md p-space-sm rounded-lg bg-surface-container-lowest text-secondary flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div class="flex flex-col">
+<span class="font-label-technical text-label-technical uppercase tracking-wider text-secondary">Zero-COD Mandate Notice</span>
+<p class="font-label-md text-label-md text-on-surface-variant mt-0.5 leading-snug">
+          100% advance transfer required. Verified via GCash, MariBank, PNB, or PayPal before armored courier dispatch.
+        </p>
+</div>
+</div>
+<!-- Cart Items Scrollable List -->
+<div class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-space-md">
+<!-- Cart Item 1 -->
+<div class="p-space-sm rounded-lg bg-surface-container flex gap-space-sm relative group">
+<div class="w-20 h-20 rounded bg-surface-container-lowest shrink-0 overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Close up photograph of a carbon fiber billiards pool shaft with radial brass joint pin and Taom green tip under stadium arena rim lighting on black slate background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw4VHKRMwHoXlHzCqueRgxlmDTTIlpqnsTj4TM6VjnB7vwDxb9fG-CNpSQzVbpJqYvm23Pw1TOH9hP0uxpJBupWz-ZW7RdEyVzrPvpHD-YDl4QCm0cfbkZWqMHXr77U5hdAK4qyeXmWKZm3j7s-lHHW8syVkFc4PrHgzGM9T173GzM9U__RXTOpQshgB4rSrNq0GFgojlh7EUb8QXhrypFNZP66RBWKNE9gYjrT84">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1">Hushley Apex Pro Carbon Shaft</h3>
+<button class="text-outline hover:text-error transition-colors ml-1" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<p class="font-label-technical text-label-technical text-on-surface-variant uppercase mt-0.5">Radial Pin • 12.5mm • Soft Tip</p>
+</div>
+<div class="flex items-center justify-between mt-space-xs">
+<div class="flex items-center bg-surface-container-lowest rounded px-2 py-0.5 gap-2 text-on-surface">
+<button class="hover:text-primary text-[14px] font-bold" type="button">-</button>
+<span class="font-label-technical text-label-technical">1</span>
+<button class="hover:text-primary text-[14px] font-bold" type="button">+</button>
+</div>
+<span class="font-title-md text-title-md text-primary font-bold">₱18,500</span>
+</div>
+</div>
+</div>
+<!-- Cart Item 2 -->
+<div class="p-space-sm rounded-lg bg-surface-container flex gap-space-sm relative group">
+<div class="w-20 h-20 rounded bg-surface-container-lowest shrink-0 overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Two cubes of luxury deep blue pool chalk resting on black textured arena felt with embossed silver typography in dramatic high contrast studio light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnl2cFOk6wf8z1p3jkVNdHlPS9g0GR8YlSrlDBQgcVAcYLC0XdRwWKX2vVNUNpj8K0Soi5k2_udBTnhf9MY4DYv9N5XnRKR4blT5WQSV4sJhczeMiTXELAfxd5gLGwGn6sCbYiJcZZ-my2W3W2mp8JseNidJHbEyt87BPRbtSno74qWiXdmWZPtwPl8090NrylnG4PzPJdsm2E50FofJe68zpSSL04jL_EX73yJjU">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1">Taom Pyro Tournament Blue Chalk</h3>
+<button class="text-outline hover:text-error transition-colors ml-1" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<p class="font-label-technical text-label-technical text-on-surface-variant uppercase mt-0.5">Pack of 2 • Clean Contact</p>
+</div>
+<div class="flex items-center justify-between mt-space-xs">
+<div class="flex items-center bg-surface-container-lowest rounded px-2 py-0.5 gap-2 text-on-surface">
+<button class="hover:text-primary text-[14px] font-bold" type="button">-</button>
+<span class="font-label-technical text-label-technical">2</span>
+<button class="hover:text-primary text-[14px] font-bold" type="button">+</button>
+</div>
+<span class="font-title-md text-title-md text-primary font-bold">₱4,900</span>
+</div>
+</div>
+</div>
+<!-- Cart Item 3 -->
+<div class="p-space-sm rounded-lg bg-surface-container flex gap-space-sm relative group">
+<div class="w-20 h-20 rounded bg-surface-container-lowest shrink-0 overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="High precision macro shot of multi layered black pigskin cue tip with clear acrylic shield base on a carbon rod dark reflective minimalist background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGFymjoRS8n_0YPeMbZ59xLR7bXCpakodw5vLTf5D6eLQtvd6ZnacMvwsLsYIDYpAhOAVZE6YCt9K9eY5Fkxu21fxzr6WQmuGoXA-4YvpvPRq_72moRRdhuVw6ujJ0D5bOTCMPfeHXKjxgrR-hZFgwfyKNynUCyTlE6Tp0vdjrduE0sCddt2U6BHkHyaDAGXK7bJbddI5fN5zG0TG9lpir3V6A1cI7jHoEWDGdEgA">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1">Kamui Clear Black Cue Tip</h3>
+<button class="text-outline hover:text-error transition-colors ml-1" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+<p class="font-label-technical text-label-technical text-on-surface-variant uppercase mt-0.5">Medium (M) • 14mm 8-Layer</p>
+</div>
+<div class="flex items-center justify-between mt-space-xs">
+<div class="flex items-center bg-surface-container-lowest rounded px-2 py-0.5 gap-2 text-on-surface">
+<button class="hover:text-primary text-[14px] font-bold" type="button">-</button>
+<span class="font-label-technical text-label-technical">1</span>
+<button class="hover:text-primary text-[14px] font-bold" type="button">+</button>
+</div>
+<span class="font-title-md text-title-md text-primary font-bold">₱1,350</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Cart Footer & Price Breakdown -->
+<div class="p-space-lg bg-surface-container-high flex flex-col gap-space-sm shadow-xl">
+<div class="flex justify-between text-body-md font-body-md text-on-surface-variant">
+<span class="">Cart Subtotal</span>
+<span class="text-on-surface font-semibold">₱24,750</span>
+</div>
+<div class="flex justify-between text-body-md font-body-md text-on-surface-variant">
+<span class="flex items-center gap-1">Insured Dispatch <span class="material-symbols-outlined text-[14px] text-secondary">info</span></span>
+<span class="text-secondary font-label-technical text-label-technical uppercase">Calculated At Checkout</span>
+</div>
+<div class="h-px bg-surface-variant my-1"></div>
+<div class="flex justify-between items-baseline mb-space-xs">
+<span class="font-title-md text-title-md uppercase text-on-surface">Payable Total</span>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm text-primary font-bold tracking-tight">₱24,750</span>
+<span class="font-label-technical text-label-technical text-on-surface-variant block">PHP (100% PRE-PAID)</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-space-sm rounded-lg font-label-lg text-label-lg uppercase tracking-wider font-bold transition-all shadow-lg flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+          Proceed to Secured Checkout
+        </button>
+<button class="w-full bg-surface-container-low hover:bg-surface-container text-on-surface py-2 rounded-lg font-label-md text-label-md uppercase tracking-wider transition-colors text-center" id="cartContinueBtn" type="button">
+          Continue Exploring Catalog
+        </button>
+</div>
+</div>
+</aside>
+<!-- Hero & Tournament Atelier Banner -->
+<section class="relative w-full overflow-hidden bg-surface-container-lowest py-space-xl px-gutter-mobile lg:px-margin">
+<!-- Ambient arena lighting effect -->
+<div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-primary/10 blur-[130px] rounded-full pointer-events-none"></div>
+<div class="absolute top-1/2 right-10 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<div class="max-w-[1440px] mx-auto flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg relative z-10">
+<div class="flex flex-col max-w-3xl">
+<div class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-high w-fit mb-space-sm text-secondary font-label-technical text-label-technical uppercase">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+          Official Philippine Tournament Partner &amp; Atelier
+        </div>
+<h1 class="font-headline-lg text-headline-lg uppercase tracking-wider text-on-surface leading-tight mb-space-sm">HUSHLEY BILLIARDS</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+          Engineered for master cueists and tournament competitors. Micro-millimeter joint tolerance, aerospace structural carbon weave, and verified pure-contact tips.
+        </p>
+</div>
+<!-- Quick Trust Metric Badges -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-space-xs bg-surface-container-low p-space-sm rounded-xl">
+<div class="flex flex-col p-space-xs bg-surface-container rounded">
+<span class="font-label-technical text-label-technical text-secondary uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span> GENUINE
+          </span>
+<span class="font-title-md text-title-md text-on-surface font-bold">100% Proven</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Direct cue maker lot</span>
+</div>
+<div class="flex flex-col p-space-xs bg-surface-container rounded">
+<span class="font-label-technical text-label-technical text-primary uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">adjust</span> TOLERANCE
+          </span>
+<span class="font-title-md text-title-md text-on-surface font-bold">±0.01 mm</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Radial &amp; Uni-Loc standard</span>
+</div>
+<div class="flex flex-col p-space-xs bg-surface-container rounded col-span-2 sm:col-span-1">
+<span class="font-label-technical text-label-technical text-secondary uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">shield_with_heart</span> PROTOCOL
+          </span>
+<span class="font-title-md text-title-md text-on-surface font-bold">Zero-COD</span>
+<span class="font-label-md text-label-md text-on-surface-variant">100% Secure Pre-Pay</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Category Nav Strip Carousel / Horizontal Pills -->
+<section class="w-full bg-surface-container-low py-space-sm px-gutter-mobile lg:px-margin sticky top-28 z-30 shadow-md">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar scroll-smooth py-1" id="categoryScroller">
+<button class="px-space-md py-1.5 rounded-full bg-primary text-on-primary font-label-md text-label-md uppercase tracking-wider shrink-0 transition-transform active:scale-95 shadow-sm font-semibold">
+          All Products (24)
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Billiard Cues
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Carbon Shafts
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Billiard Chalk
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Billiard Tips
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Ferrules
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Cue Cases
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Cue Grips &amp; Leather
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Billiard Gloves
+        </button>
+<button class="px-space-md py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md uppercase tracking-wider shrink-0 transition-colors">
+          Accessories
+        </button>
+</div>
+<div class="hidden lg:flex items-center gap-space-xs shrink-0">
+<button class="flex items-center gap-1 text-secondary bg-surface-container-high px-space-sm py-1.5 rounded font-label-technical text-label-technical uppercase hover:bg-surface-variant transition-colors" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');"><span class="material-symbols-outlined text-[16px]">visibility</span> View Cart</button>
+</div>
+</div>
+</section>
+<!-- Filter & Sorting Master Bar -->
+<section class="w-full bg-surface px-gutter-mobile lg:px-margin pt-space-lg pb-space-sm">
+<div class="max-w-[1440px] mx-auto bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-md shadow-md">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-space-sm items-center">
+<!-- Search bar with keyboard shortcut hint -->
+<div class="lg:col-span-4 relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline text-[18px]">search</span>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-16 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="searchInput" placeholder="Filter by diameter, taper, brand..." type="text">
+<span class="absolute right-3 font-label-technical text-label-technical text-outline bg-surface-container px-1.5 py-0.5 rounded">Ctrl + K</span>
+</div>
+<!-- Hardness Filter -->
+<div class="lg:col-span-2">
+<label class="sr-only">Tip Hardness</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md px-3 py-2.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
+<option value="">Hardness: All Grades</option>
+<option value="soft">Soft (S) - Maximum Spin</option>
+<option value="medium">Medium (M) - Standard Pro</option>
+<option value="hard">Hard (H) - Break &amp; Power</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Joint Pin Type Filter -->
+<div class="lg:col-span-2">
+<label class="sr-only">Joint Pin</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md px-3 py-2.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
+<option value="">Joint Pin: All Standards</option>
+<option value="radial">Radial Pin (Imperial)</option>
+<option value="uniloc">Uni-Loc Quick Release</option>
+<option value="3810">3/8 × 10 Flat Faced</option>
+<option value="wavy">Wavy Joint 2</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Sort dropdown -->
+<div class="lg:col-span-2">
+<label class="sr-only">Sort Criteria</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md px-3 py-2.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
+<option value="featured">Sort: Featured Picks</option>
+<option value="price-asc">Price: Low to High</option>
+<option value="price-desc">Price: High to Low</option>
+<option value="stock">Stock Availability</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">sort</span>
+</div>
+</div>
+<!-- In-Stock Toggle & Reset -->
+<div class="lg:col-span-2 flex items-center justify-between lg:justify-end gap-space-sm">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-lowest text-primary focus:ring-0 focus:outline-none accent-primary" type="checkbox">
+<span class="font-label-md text-label-md text-on-surface">In Stock Only</span>
+</label>
+<button class="text-outline hover:text-primary transition-colors font-label-technical text-label-technical uppercase flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">refresh</span> Reset
+          </button>
+</div>
+</div>
+<!-- Active Filter Tags & Zero-COD Reassurance Bar -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs text-on-surface-variant font-label-md text-label-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-label-technical text-label-technical text-outline uppercase">Active Filters:</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-on-surface text-label-technical font-label-technical">
+            Category: All
+            <span class="material-symbols-outlined text-[12px] cursor-pointer hover:text-primary">close</span>
+</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-on-surface text-label-technical font-label-technical">
+            Status: In Stock (8 active)
+            <span class="material-symbols-outlined text-[12px] cursor-pointer hover:text-primary">close</span>
+</span>
+</div>
+<div class="flex items-center gap-2 text-secondary font-label-technical text-label-technical">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="">DISPATCH WINDOW: ORDERS PRE-PAID BEFORE 2:00 PM SHIP SAME-DAY</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Master Product Catalog Grid -->
+<section class="w-full bg-surface px-gutter-mobile lg:px-margin py-space-lg">
+<div class="max-w-[1440px] mx-auto">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-lg">
+<!-- PRODUCT CARD 1: Hushley Apex Pro Carbon Shaft -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<!-- Image Box with Badges -->
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Aerospace matte black carbon fiber billiard cue shaft resting on an obsidian pedestal under focused tournament floodlights highlighting 12.5mm pro taper tip and carbon twill pattern" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiePPWMoRSUzmJNgP2Lzvf6yEbEEh79S4Fp3gMU8jeoWmlUQXsxVs_mO_SiH1qXpFaWZi5KFIoZf0yOXOVm70K68fSyEMg_i8GHkkApeqHoVprvy-mfMImbPIo4lsu8DaK65-ktym3iauUd3vBqsYhwsL4DpevfDDPww9peqAJyghWMWq9kvbFZgdaRAAbkYAXWbRlUaI3zyJ6Ym948OprkpJMIg9UloPyJqGmEc4">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-primary text-on-primary font-label-technical text-label-technical px-2 py-0.5 rounded shadow">FLAGSHIP SERIES</span>
+<span class="bg-surface-container-highest/90 backdrop-blur text-secondary font-label-technical text-label-technical px-2 py-0.5 rounded">100% PRE-PAY</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">TAPER: PRO CONICAL</span>
+<span class="text-primary font-bold">12.5 MM OD</span>
+</div>
+</div>
+<!-- Content Body -->
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Carbon Shafts</span>
+<span class="">TAOM FUSION TIP</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Hushley Apex Pro Carbon Shaft
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Ultra-low deflection aerospace carbon tube with calibrated internal polyurethane damping core. Radial joint brass insert.
+              </p>
+<!-- Selectors for Variation -->
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">TIP HARDNESS:</span>
+<div class="flex gap-1">
+<button class="px-2 py-0.5 rounded bg-primary text-on-primary font-bold">S</button>
+<button class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface hover:text-primary">M</button>
+<button class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface hover:text-primary">H</button>
+</div>
+</div>
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">PIN THREAD:</span>
+<span class="text-on-surface font-bold">Radial Pin (Standard)</span>
+</div>
+</div>
+</div>
+<!-- Price & CTAs -->
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱18,500</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 14 Available</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Zero-COD Verified</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 2: Kaiser Black Tournament Cue -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Sleek two-piece professional billiards pool cue featuring deep black Canadian maple butt and carbon core, double pressed Irish linen wrap with gleaming Uni-Loc quick release joint pin on dark moody background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdZ_KaXqBRYqs6Kv4S2iSegCu7Kvg8m8eCWcdo4wukpSNoveh8wzGQqTUtgcZmvaV-OGmb4aKluhvkXKF_D8fzDzQYATnCyIDz6nw_4AQ3sdPqnh2qpYVxuRzqiu6lL8vvawR-pKqDl0UfZnfxNGrykyug2OKe9yx9STCeI2Q8XEgdWNsr8QBQun_FDpedDw2MaeJ-F8a0YWX-HkucH1YtyCdfV-i3mMFKUwSPtG8">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-secondary text-on-secondary font-label-technical text-label-technical px-2 py-0.5 rounded shadow">LIMITED RUN</span>
+
+</div>
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">WEIGHT: 19.0 OZ</span>
+<span class="text-secondary font-bold">UNI-LOC JOINT</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Billiard Cues</span>
+<span class="">12.75MM TIP</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Kaiser Black Tournament Cue
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                2-Piece seasoned Canadian maple butt built around an aerospace carbon fiber structural spine with Irish linen wrap.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">JOINT STANDARD:</span>
+<span class="text-on-surface font-bold">Uni-Loc Quick Release</span>
+</div>
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">WRAP:</span>
+<span class="text-on-surface">Double Pressed Linen</span>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱26,900</span><span class="price-stock-pill low-stock"><span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span> Only 3 Left</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Pre-Paid Courier</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 3: Taom Pyro Tournament Chalk -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Two round cylindrical pool chalk pieces in vibrant clean turquoise blue color with precision cylindrical wrappers placed neatly on a dark matte graphite surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSCfuqEUVUPvm4erErLnTgfHSN8TxLsGB1NH94HLIoRYahEEFutCFgKe2e0iObaCzH5itf6p8H3IM9I_RrpLZ8irG2ikGGzlB5fQ2Ou5jUrrkz5OWLAbMvke6-nmR8AebcxD0-O121o6a1jlTUYyr7pBrmOnPXj3qSSliTvflOdC3qtsQUOZcakyEzyEk25ElNaJD2QS_KVZmcKvtRD5vcjI1-O4IJx11_SWr3Sg8">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-surface-container-highest text-secondary font-label-technical text-label-technical px-2 py-0.5 rounded">MATCH GRADE</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">ZERO CUE BALL RESIDUE</span>
+<span class="text-primary font-bold">PACK OF 2</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Billiard Chalk</span>
+<span class="">ORIGINAL FINLAND</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Taom Pyro Tournament Blue Chalk
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Engineered for zero-residue contact. Eliminates kicks and bad contacts during high-draw shots. Official WPA match certified.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">PACKAGING:</span>
+<span class="text-on-surface font-bold">2 Sealed Cylinders</span>
+</div>
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">AUTHENTICITY:</span>
+<span class="text-primary font-bold">QR Hologram Intact</span>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱2,450</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 42 In Stock</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Fast Lalamove Pack</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 4: Kamui Clear Black Tip -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Extreme macro shot of genuine Kamui Clear Black layered cue tip showcasing the acrylic clear base and 8 micro laminations of treated pigskin on dark tournament felt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHHKiwnOdVOE_W1qQqH4HLtTjmVVLJbhSxrVJBuw-nYVaH3SSbG1TpQQCgXLCIndHDd67XU04hfCkaTA_rhgC4xVPK8pDU5CS5eO4fIFBTuqvcdBiKBv-PUOxtDTrOR90C5HlaIHFOvzrC2n0QtaiObz0w62gTY_qdnztH-LH3Xu6MOkMOo70AqCkr2QR4uZb4HFolcLiqn9yQ-sIBhPiO5jHNCmcAk7AayLwIEI4">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-primary text-on-primary font-label-technical text-label-technical px-2 py-0.5 rounded">JAPAN IMPORT</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">8-LAYER PIGSKIN</span>
+<span class="text-primary font-bold">14.0 MM</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Billiard Tips</span>
+<span class="">CLEAR SHIELD BASE</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Kamui Clear Black Layered Tip
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Clear acrylic base eliminates glue absorption into the leather layers, ensuring maximum elastic rebound and chalk adhesion.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">SELECT HARDNESS:</span>
+<div class="flex gap-1">
+<button class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface hover:text-primary">Soft (S)</button>
+<button class="px-2 py-0.5 rounded bg-primary text-on-primary font-bold">Med (M)</button>
+<button class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface hover:text-primary">Hard (H)</button>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱1,350</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 28 In Stock</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Unit Price</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 5: Aegis Tournament Cue Case -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Tactical hard shell black cue case with armored corners and ballistic nylon exterior sitting upright in dark dramatic sports equipment photography with gold zipper accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBh4bICFGtCIK213aNkbLFxpW0AFiJ9-YFseLKIxo4POOz77YLcC_gRtNSmkDmGQiwF0ha-oP86FlqOLCbKb1mi1evGL43RBhzJZcIQ3ds7NnHJR6SaYYgHajXbN0onWIjkc40nrZQ5ZcM5MEw_ecTRWH4enpEI5uyd62QwvpBfQTF4qXi2t1pYeKoO8UDnW9cKVK_9Caj7iQ5Wg_YdcuyRDDrS66tfVDDbdfqqjEU">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-surface-container-highest text-on-surface font-label-technical text-label-technical px-2 py-0.5 rounded">ARMORED CARRY</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">CAPACITY: 3B x 5S</span>
+<span class="text-secondary font-bold">SHOCKPROOF</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Cue Cases</span>
+<span class="">BALLISTIC NYLON</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Aegis Tournament Cue Case (3B × 5S)
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Hard shell structural chamber, custom jump cue pocket, ergonomic shoulder strap, and waterproof heavy-duty zippers.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">INTERNAL CHASSIS:</span>
+<span class="text-on-surface font-bold">Individual Padded Sleeves</span>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱7,800</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 8 In Stock</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Boxed Shipping</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 6: Peradon Premium Lizard Leather Cue Grip -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Embossed textured exotic black lizard leather cue wrap unrolled on a dark wooden workbench with cue maker calipers and beveling tools beside it" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDslnvql_9U4gkjGhc0-KulCZ9V_stLD-a3J-wwPOlArGGAmEjmCeCliO2VrIJ1bGmUqANQIJGRfr1ouEYbqxDhXLN9TQ0wxMyYUs6GxHYbjO06PyzNKmTdYkgQbUXopCZZdsM2U5E91OmR255MhRAfIZgzaa647lWZ-uVIVt08D3j1lUfeSsCFb8H1bnSF7JN5VzGK9PIBCPvbpF_J3jWBSXcbzXnRSNMloUM4FWM">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-surface-container-highest text-secondary font-label-technical text-label-technical px-2 py-0.5 rounded">CUSTOM ATELIER</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">GENUINE LEATHER</span>
+<span class="text-primary font-bold">NON-SLIP GRAIN</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Cue Grips &amp; Leather</span>
+<span class="">ITALIAN FINISH</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Peradon Textured Lizard Leather Grip
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Deep embossed scale pattern for maximum grip retention in humid tournament halls. Moisture wicking backer.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">COLOR FINISH:</span>
+<div class="flex gap-1.5 items-center">
+<span class="w-3.5 h-3.5 rounded-full bg-black ring-1 ring-primary cursor-pointer"></span>
+<span class="w-3.5 h-3.5 rounded-full bg-amber-900 cursor-pointer"></span>
+<span class="w-3.5 h-3.5 rounded-full bg-emerald-800 cursor-pointer"></span>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱2,100</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 19 In Stock</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Pre-Cut Strip</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 7: Predator Second Skin Billiard Glove -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Championship billiards three finger bridge glove in sleek matte black and tournament yellow accents worn on a player hand resting on a tournament pool cue shaft" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCavqj_z5X1qKqhokoJ-lMHty4OAo1I1lPpQ0zS-ylCWIBL61weM5LTERkbpk4NDa1ZScmKtg30jRDQFU5KUb9IMA_0pmlpm2QIwJHOHessKufx67QoEc6xvBlScd5pgJ8v3r7nxw-afeKBS87xu45sbFJ8rGvN_WJ1Avb9Tdel5k98j_5kd7lt-JnZRpOwC0WC2P5mwvTSlv6oDPZLLINf4nZ1vmD6qcngWLuaQzc">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-surface-container-highest text-primary font-label-technical text-label-technical px-2 py-0.5 rounded">LEFT HAND BRIDGE</span>
+</div>
+
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">BREATHABLE MESH</span>
+<span class="text-secondary font-bold">SILKY GLIDE</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Billiard Gloves</span>
+<span class="">FRICTION-FREE PALM</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Predator Second Skin Bridge Glove
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Silky, low-friction synthetic surface ensures smooth cue action regardless of moisture or ambient humidity.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">FIT SIZE:</span>
+<div class="flex gap-1">
+<button class="px-2 py-0.5 rounded bg-primary text-on-primary font-bold">S/M</button>
+<button class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface hover:text-primary">L/XL</button>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱1,850</span><span class="price-stock-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span> 35 In Stock</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Genuine Sealed</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+<!-- PRODUCT CARD 8: Jura High-Impact Bakelite Phenolic Ferrule -->
+<article class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col group hover:shadow-[0_16px_36px_-10px_rgba(0,0,0,0.85)] transition-all duration-300">
+<div class="relative w-full aspect-[4/3] bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Three precision machined ivory white phenolic cue ferrules lined up beside micrometers on a carbon slate precision measurement table under direct spotlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGfyWwuzaxzpmr6q0MfRsxXjqhtk5DuuDNVNWnmUksV3PllpRRaqAEPJBPqL5rvLVIX-TYAbkDdgAblTJ76p5PZ6_dHaoxftS9geVyJ05zgFECorDjfcRHDizb9gQAzPzVdfi_X9wxbJ-ZkNJTsG2MficAcc5K43MS8K57KjCjZhSUwjiSp3Vd7ULGIDEL29EXruCWFjw8PO1OlriAhTfgUBe42dWjKlA1V_hsc5k">
+<div class="absolute top-2 left-2 flex flex-col gap-1">
+<span class="bg-surface-container-highest text-secondary font-label-technical text-label-technical px-2 py-0.5 rounded">LUTHIER LOT</span>
+
+</div>
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/95 backdrop-blur px-2.5 py-1.5 rounded flex justify-between items-center text-on-surface font-label-technical text-label-technical">
+<span class="">THREADED INTERIOR</span>
+<span class="text-primary font-bold">13.0 MM OD</span>
+</div>
+</div>
+<div class="p-space-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-technical text-label-technical mb-1">
+<span class="text-secondary uppercase">Ferrules</span>
+<span class="">BAKELITE PHENOLIC</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-tight mb-space-xs">
+                Jura High-Impact Ferrule (Set of 3)
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-space-sm">
+                Engineered for explosive break cues and zero chalk staining. Capped threaded core engineered for high tensile resilience.
+              </p>
+<div class="bg-surface-container p-space-xs rounded-lg flex flex-col gap-1.5 mb-space-md">
+<div class="flex items-center justify-between text-label-technical font-label-technical text-on-surface-variant">
+<span class="">OUTER DIAMETER:</span>
+<span class="text-on-surface font-bold">13.00 ± 0.02 mm</span>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-baseline justify-between mb-space-sm"><div class="flex items-center gap-2"><span class="font-headline-md text-headline-md font-extrabold tracking-tight text-white">₱1,150</span><span class="price-stock-pill low-stock">Low Stock (4 Sets)</span></div><span class="font-label-technical text-label-technical text-outline uppercase">Set of 3 Units</span></div>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="w-full bg-surface-container-high hover:bg-surface-variant text-on-surface py-2 rounded font-label-lg text-label-lg font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1" onclick="document.getElementById('cartDrawer').classList.remove('translate-x-full'); document.getElementById('cartDrawerBackdrop').classList.remove('opacity-0','pointer-events-none');" type="button"><span class="material-symbols-outlined text-[16px]">add_shopping_cart</span> Add To Cart</button>
+<button class="w-full bg-primary hover:bg-primary-fixed text-on-primary py-2 rounded font-label-lg text-label-lg font-bold uppercase tracking-wider transition-all shadow-md" type="button">
+                  Buy Now
+                </button>
+</div>
+</div>
+</div>
+</article>
+</div>
+</div>
+</section>
+<!-- Interactive Luthier Technical Specification Matrix (Data Visualization) -->
+<section class="w-full bg-surface-container-low px-gutter-mobile lg:px-margin py-space-xl">
+<div class="max-w-[1440px] mx-auto flex flex-col gap-space-lg">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div>
+<span class="font-label-technical text-label-technical text-secondary uppercase tracking-widest block mb-1">Engineering Benchmark</span>
+<h2 class="font-headline-lg text-headline-lg uppercase text-on-surface">Carbon Shaft Deflection Comparison</h2>
+</div>
+<div class="text-on-surface-variant font-label-technical text-label-technical">
+          Calibrated at 10.5 m/s tip velocity with 15mm off-center striking point
+        </div>
+</div>
+<!-- Comparison Metrics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Apex Pro Carbon -->
+<div class="bg-surface-container p-space-md rounded-xl flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+<div>
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-headline-sm text-headline-sm text-primary">Hushley Apex Pro</span>
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary font-label-technical text-label-technical">0.72° DEFLECTION</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">Aerospace carbon filament composite with multi-density dampener.</p>
+<!-- Deflection Chart SVG -->
+<div class="w-full py-2">
+<div class="flex justify-between font-label-technical text-label-technical text-on-surface-variant mb-1">
+<span class="">RIGIDITY INDEX</span>
+<span class="text-primary font-bold">98 / 100</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 98%;"></div>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-high p-space-xs rounded flex justify-between font-label-technical text-label-technical text-on-surface">
+<span class="">JOINT DISPERSION</span>
+<span class="text-secondary">± 0.008 mm</span>
+</div>
+</div>
+<!-- Competitor Standard Carbon -->
+<div class="bg-surface-container p-space-md rounded-xl flex flex-col justify-between shadow-sm">
+<div>
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Market Standard Carbon</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-technical text-label-technical">1.18° DEFLECTION</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">Generic imported hollow carbon shafts with standard resin.</p>
+<div class="w-full py-2">
+<div class="flex justify-between font-label-technical text-label-technical text-on-surface-variant mb-1">
+<span class="">RIGIDITY INDEX</span>
+<span class="text-on-surface font-bold">81 / 100</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-on-surface-variant rounded-full" style="width: 81%;"></div>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-high p-space-xs rounded flex justify-between font-label-technical text-label-technical text-on-surface-variant">
+<span class="">JOINT DISPERSION</span>
+<span class="">± 0.035 mm</span>
+</div>
+</div>
+<!-- Traditional Hard Maple -->
+<div class="bg-surface-container p-space-md rounded-xl flex flex-col justify-between shadow-sm">
+<div>
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Traditional Hard Maple</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-technical text-label-technical">2.45° DEFLECTION</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">Kiln dried solid Canadian maple shafts susceptible to atmospheric warp.</p>
+<div class="w-full py-2">
+<div class="flex justify-between font-label-technical text-label-technical text-on-surface-variant mb-1">
+<span class="">RIGIDITY INDEX</span>
+<span class="text-on-surface font-bold">64 / 100</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-lowest overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 64%;"></div>
+</div>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs bg-surface-container-high p-space-xs rounded flex justify-between font-label-technical text-label-technical text-on-surface-variant">
+<span class="">WARP RESISTANCE</span>
+<span class="text-error">Humidity Dependent</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust & Service Guarantee Grid -->
+<section class="w-full bg-surface px-gutter-mobile lg:px-margin py-space-xl">
+<div class="max-w-[1440px] mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg">
+<!-- Guarantee Item 1 -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">verified_user</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface uppercase">100% Pre-Paid Trust</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Instant digital receipts via GCash Merchant, MariBank PH, and PNB. Dedicated payment confirmation rep assigned to each order queue.
+          </p>
+<span class="font-label-technical text-label-technical text-secondary uppercase mt-auto">Zero-COD Safety Standard</span>
+</div>
+<!-- Guarantee Item 2 -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">token</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface uppercase">Guaranteed Provenance</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Direct cue maker lot allocation. Every carbon shaft and piece of chalk ships with verified holographic tamper seals and micro-caliper certs.
+          </p>
+<span class="font-label-technical text-label-technical text-secondary uppercase mt-auto">WPA Authorized Match Gear</span>
+</div>
+<!-- Guarantee Item 3 -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">local_shipping</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface uppercase">Armored Dispatch</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Rigid bubble capsule encapsulation with puncture-proof hardboard outer sleeves. Same-day express via Lalamove across NCR; J&amp;T &amp; LBC nationwide.
+          </p>
+<span class="font-label-technical text-label-technical text-secondary uppercase mt-auto">Insured In-Transit Protection</span>
+</div>
+<!-- Guarantee Item 4 -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">published_with_changes</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface uppercase">9-Step Live Tracking</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Follow your order status in real-time from payment verification, luthier caliper inspection, armored packing, to courier handoff and final delivery.
+          </p>
+<a class="font-label-technical text-label-technical text-primary hover:underline uppercase mt-auto flex items-center gap-1" data-path="track-order" href="#">
+            Access Tracking Portal <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive JavaScript logic -->
+<script>
+    (function initStorefront() {
+      const cartDrawer = document.getElementById('cartDrawer');
+      const cartBackdrop = document.getElementById('cartDrawerBackdrop');
+      const closeCartBtn = document.getElementById('closeCartBtn');
+      const cartContinueBtn = document.getElementById('cartContinueBtn');
+
+      function openCart() {
+        if (cartDrawer && cartBackdrop) {
+          cartDrawer.classList.remove('translate-x-full');
+          cartBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+        }
+      }
+
+      function closeCart() {
+        if (cartDrawer && cartBackdrop) {
+          cartDrawer.classList.add('translate-x-full');
+          cartBackdrop.classList.add('opacity-0', 'pointer-events-none');
+        }
+      }
+
+      if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
+      if (cartContinueBtn) cartContinueBtn.addEventListener('click', closeCart);
+      if (cartBackdrop) cartBackdrop.addEventListener('click', closeCart);
+
+      // Keyboard shortcut Ctrl+K focus
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const searchInput = document.getElementById('searchInput');
+          if (searchInput) searchInput.focus();
+        }
+        if (e.key === 'Escape') {
+          closeCart();
+        }
+      });
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest mt-margin"><div class="max-w-[1440px] mx-auto px-gutter-mobile lg:px-margin py-margin"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-xl mb-margin"><div class="flex flex-col gap-space-sm"><div class="flex items-center gap-space-sm mb-space-xs"><img alt="Hushley Billiards Monogram Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrCbLcp4-wie9Afj59u8oD78DwLfeSfBAhfh0j8odaAV1yo5bMk1xiRN00RcUNewCXCnycsfzHCMasOdadF7njhnILnRYaH3w5rM1cdX1wQv_PMguJuNC2-6aHXfw54nJjCS0sm7vQ7gUQLSFIPRWoPbZiuQcPvO0BlL3bZvgq59Ud8cFseGRYU8Y2tENTqwY5jimknQ4mCo9SB-RJTh_xWm3rXgk2QELw5rgq8_edA"><span class="font-headline-sm text-headline-sm uppercase text-on-surface">HUSHLEY BILLIARDS</span></div><p class="font-body-md text-body-md text-on-surface-variant">The tournament player atelier. Handcrafted precision cues, aerospace carbon shafts, calibrated tips, and championship accessories.</p><div class="flex items-center gap-2 mt-space-sm text-secondary font-label-technical text-label-technical"><span class="material-symbols-outlined text-[16px]">shield</span><span class="">100% GENUINE PROVENANCE ASSURED</span></div></div><div class="flex flex-col gap-space-sm"><span class="font-title-md text-title-md text-on-surface uppercase">Payment Channels</span><p class="font-body-md text-body-md text-on-surface-variant">Exclusive Pre-Paid Protocol. Verified digital transfers only prior to queue release:</p><div class="flex flex-wrap gap-space-xs mt-space-xs"><span class="px-space-sm py-1 bg-surface-container-high text-primary font-label-technical text-label-technical rounded">GCASH PREMIER</span><span class="px-space-sm py-1 bg-surface-container-high text-primary font-label-technical text-label-technical rounded">MARIBANK PH</span><span class="px-space-sm py-1 bg-surface-container-high text-primary font-label-technical text-label-technical rounded">PAYPAL INTERNATIONAL</span><span class="px-space-sm py-1 bg-surface-container-high text-primary font-label-technical text-label-technical rounded">PNB COMMERCIAL</span></div></div><div class="flex flex-col gap-space-sm"><span class="font-title-md text-title-md text-on-surface uppercase">Dispatch Partners</span><p class="font-body-md text-body-md text-on-surface-variant">Armored packaging with bubble capsule suspension:</p><div class="flex flex-wrap gap-space-xs mt-space-xs"><span class="px-space-sm py-1 bg-surface-container text-secondary font-label-technical text-label-technical rounded">LALAMOVE (SAME-DAY)</span><span class="px-space-sm py-1 bg-surface-container text-on-surface font-label-technical text-label-technical rounded">J&amp;T EXPRESS</span><span class="px-space-sm py-1 bg-surface-container text-on-surface font-label-technical text-label-technical rounded">LBC AIR CARGO</span><span class="px-space-sm py-1 bg-surface-container text-on-surface font-label-technical text-label-technical rounded">DHL WORLDWIDE</span></div></div><div class="flex flex-col gap-space-sm"><span class="font-title-md text-title-md text-on-surface uppercase">Atelier Policies</span><ul class="flex flex-col gap-space-xs font-body-md text-body-md text-on-surface-variant"><li class=""><a class="hover:text-primary transition-colors" data-path="authenticity-guarantee" href="#">Authenticity &amp; Micro-Tolerance Guarantee</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="pre-payment-policy" href="#">Zero-COD &amp; Advance Payment Protocol</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="shipping-policy" href="#">Insured Fragile Dispatch Terms</a></li><li class=""><a class="hover:text-primary transition-colors" data-path="warranty" href="#">Shaft Rigidity &amp; Warranty Guidelines</a></li></ul></div></div><div class="pt-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md text-on-surface-variant font-label-md text-label-md"><p class="">© 2024 Hushley Billiard Accessories. Master-Craftsman Atelier. All Rights Reserved.</p><div class="flex items-center gap-space-lg"><a class="hover:text-on-surface transition-colors" data-path="track-order" href="#">Order Tracking</a><a class="hover:text-on-surface transition-colors" data-path="admin-portal" href="#">Staff Authorization</a></div></div></div></footer>
+
+
+
+</body></html>
