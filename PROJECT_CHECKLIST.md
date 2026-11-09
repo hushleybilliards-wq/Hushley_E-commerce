@@ -9,15 +9,15 @@ Last reviewed: 9 November 2026 (Asia/Manila)
 | Storefront and admin UI | In progress | Variation selection and admin product configuration are implemented locally; production build passes. Storefront still needs approved catalog items. |
 | Supabase production schema | Complete | Three local migrations applied; remote history matches local. Core tables, RPC signature, and private proof bucket verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Blocked | `origin` is the client's public Hushley repo, but it has no remote branches. All current project files are untracked locally; no commit or push has been made. |
+| GitHub source | Blocked | A reviewed initial commit exists locally on `main` (`f7180a7`), but GitHub rejected the push with HTTP 403 for authenticated identity `militantezeandrei-ops`. Grant that identity write access or authenticate with an authorized GitHub account, then push. |
 | Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
 ## 1. Source control and deployment
 
 - [ ] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git`.
-- [ ] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
-- [ ] Commit the reviewed project files to the intended branch and publish them to the GitHub repository.
+- [x] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
+- [ ] Push the reviewed initial commit (`f7180a7`) from local `main` to the GitHub repository after write access is granted. The first push attempt returned HTTP 403.
 - [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible.
 - [ ] Configure Vercel production environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a Supabase secret/service-role key in a `VITE_*` variable.
 - [ ] Deploy a preview and verify storefront, account, checkout, and admin routes.

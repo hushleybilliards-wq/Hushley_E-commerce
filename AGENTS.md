@@ -76,7 +76,7 @@ The production Supabase project has all three migrations in `supabase/migrations
 
 Checkout currently asks for a courier and payment method. Shipping fee is currently editable/confirmed by staff in the admin page. The fixed domestic/international rate rules above are requirements to implement; do not assume the current checkout calculates them. Inspect the current UI, JavaScript, migration, and RLS before changing behavior. Keep the Lalamove website shipping amount at zero and represent international shipping as an estimate with a manual adjustment process.
 
-The owner has an existing Supabase project, GitHub repository, and Vercel account. Do not create replacements. Current check: Supabase is linked and migrated; the configured GitHub remote is empty (no branches, local files uncommitted); no Hushley Vercel project is visible to the connected Vercel account. Verify access and target before any GitHub publication or deployment. Never print `.env` contents or expose secret/service-role credentials.
+The owner has an existing Supabase project, GitHub repository, and Vercel account. Do not create replacements. Current check: Supabase is linked and migrated; the initial project commit exists locally on `main`, but push to the public GitHub remote was rejected with HTTP 403 for identity `militantezeandrei-ops`; no Hushley Vercel project is visible to the connected Vercel account. Verify access and target before any further GitHub publication or deployment. Never print `.env` contents or expose secret/service-role credentials.
 
 ## Working guidance
 
