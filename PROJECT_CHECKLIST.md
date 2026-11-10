@@ -6,11 +6,11 @@ Last reviewed: 11 November 2026 (Asia/Manila)
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Storefront, account, and admin UI | In progress | System font styling, hidden storefront SKU, category carousel, email-first signup, add-product modal, and approved-payment chart are in the production build. UI build passes; authenticated admin and commerce flow checks remain. |
+| Storefront, account, and admin UI | In progress | Compact product cards, regular-weight system typography, hover-pausing category loop, and staged email/SMS OTP signup are implemented locally. Admin modal and approved-payment chart remain. Build and deployed UI verification are pending for this latest update. |
 | Supabase production schema | Complete | Four local migrations applied; remote history matches local. Core tables, RPC signature, private proof bucket, and verified-owner admin trigger verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Published through `d65168d` | UI changes pushed to `main` in the existing repository. `.env`, `dist/`, and `node_modules/` remain excluded. |
-| Vercel deployment | Live at [hushley-billiards.vercel.app](https://hushley-billiards.vercel.app) | The public site returns HTTP 200; deployed storefront/admin asset names match the local production build. The connected Vercel account still cannot list/manage the Hushley project. |
+| GitHub source | Published through `de4c8b0` | Latest account/storefront updates are currently local and not yet pushed. `.env`, `dist/`, and `node_modules/` remain excluded. |
+| Vercel deployment | Existing live URL | Current public deployment is [hushley-billiards.vercel.app](https://hushley-billiards.vercel.app); the connected Vercel account still cannot list/manage the Hushley project. Verify this update after publication. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
 ## 1. Source control and deployment
@@ -54,8 +54,12 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 ## 4. Storefront, account, and checkout
 
 - [x] Replace the oversized storefront hero copy with an infinite category carousel using active categories and available product imagery; category selection filters the matching catalog.
+- [x] Use compact product cards, hide SKU from customer-facing views, remove the carousel pause/play button, and pause autoplay on hover/focus.
+- [x] Remove bold typography weights and normalize the storefront/admin font system.
 - [x] Restyle sign-in and sign-up around the supplied Stitch account references and Hushley logo.
-- [x] Make sign-up email-first, then collect full name, mobile contact, and password confirmation; use Supabase Auth rate limits and display a friendly retry message for throttled requests.
+- [x] Offer email OTP or SMS OTP at signup, collect required order contacts, and require Supabase `verifyOtp` success before showing the signed-in account.
+- [ ] Configure production Auth confirmation switches, OTP email/SMS templates, production SMTP, SMS provider credentials, rate limits, and CAPTCHA in the client-owned Supabase project.
+- [ ] Verify email OTP and SMS OTP with owner-controlled test addresses/numbers after Auth settings are configured.
 - [ ] Review whether the customer terms/privacy notice needs approved content and destination links before launch.
 - [ ] Visually inspect the storefront carousel and account layouts at desktop and mobile sizes.
 - [ ] Configure `.env` locally using only Supabase URL and publishable key.

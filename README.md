@@ -12,6 +12,16 @@ npm run dev
 
 Fill in the client's `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env`. These are browser-safe values when Row Level Security is enabled. Never place a service-role or secret key in the frontend.
 
+## Supabase OTP signup setup
+
+Customer signup uses a real Supabase Auth OTP through either email or SMS. The application rejects signups that Supabase auto-confirms without sending a verification challenge. Before enabling this flow in the production Supabase project:
+
+1. Enable email signup and require email confirmation under **Authentication → Providers → Email**. Set the **Confirm Signup** email template to include `{{ .Token }}` so Supabase sends a code for the in-page OTP form (the default confirmation-link template is not an OTP code).
+2. To offer SMS signup, enable phone auth and phone confirmation, configure an SMS provider and its credentials in Supabase, and keep the SMS template configured with `{{ .Code }}`. SMS delivery may incur provider charges.
+3. Configure production email delivery (custom SMTP recommended), redirect allow-list, Auth rate limits, and CAPTCHA in the Supabase dashboard. Keep all SMTP/SMS credentials in Supabase settings; never put them in browser `VITE_*` variables.
+
+This repository's local Supabase configuration currently has email confirmations disabled and SMS auth disabled. The hosted project's Auth settings are managed separately from SQL migrations; do not push the full local `supabase/config.toml` to production because it contains local URLs and other development defaults. Review Auth settings in the client-owned project before testing production signup. See the [Supabase email template docs](https://supabase.com/docs/guides/auth/auth-email-templates), [OTP verification reference](https://supabase.com/docs/reference/javascript/auth-verifyotp), [phone auth guide](https://supabase.com/docs/guides/auth/phone-login), and [Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits).
+
 ## Project layout
 
 ```text

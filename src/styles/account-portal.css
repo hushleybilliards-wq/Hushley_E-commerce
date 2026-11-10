@@ -30,13 +30,25 @@
 .auth-card .config-alert, .auth-card .connection-state { text-align:left; }
 .auth-card form { margin:0; text-align:left; }
 .signup-progress { margin:0 0 24px; display:flex; align-items:center; gap:9px; color:#a8aaa8; font-size:11px; font-weight:800; letter-spacing:.08em; }
-.signup-details:not([hidden]), .signin-details:not([hidden]) { animation:auth-enter 220ms cubic-bezier(.2,.7,.2,1) both; }
+.signup-details:not([hidden]), .signin-details:not([hidden]), .signup-otp:not([hidden]) { animation:auth-enter 220ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes auth-enter { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
 .progress-step { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .progress-step > span { width:22px; height:22px; display:grid; place-items:center; border:1px solid #484c4b; border-radius:50%; font-size:11px; }
 .progress-step.is-current { color:var(--ui-primary); }
 .progress-step.is-current > span, .progress-step.is-complete > span { border-color:var(--ui-primary); background:rgba(78,222,163,.12); }
 .progress-line { height:1px; flex:1; background:#3b3c3d; }
+.signup-methods { min-width:0; margin:0 0 16px; padding:11px 12px 12px; display:flex; flex-wrap:wrap; gap:8px; border:1px solid rgba(255,255,255,.09); border-radius:5px; background:rgba(9,11,14,.55); }
+.signup-methods legend { padding:0 5px; color:#c2c1bc; font-size:13px; }
+.signup-methods label { min-height:42px; flex:1 1 120px; display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #30343a; border-radius:4px; background:#101216; color:#d5d4d1; font-size:14px; cursor:pointer; }
+.signup-methods label:has(input:checked) { border-color:var(--ui-primary); background:rgba(78,222,163,.09); }
+.signup-methods input { width:17px; height:17px; margin:0; accent-color:var(--ui-primary-strong); }
+.signup-methods .material-symbols-outlined { color:var(--ui-primary); font-size:18px; }
+.signup-otp { margin-top:6px; }
+.signup-otp .auth-field { margin-top:18px; }
+.signup-otp input[name="otp_code"] { letter-spacing:.18em; font-size:18px; }
+.otp-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; }
+.otp-actions button { padding:7px 0; border:0; background:transparent; color:var(--ui-primary); font-size:13px; cursor:pointer; }
+.otp-actions button:disabled { color:#8a8d8c; cursor:wait; }
 .auth-field { display:flex; flex-direction:column; gap:8px; margin:0 0 17px; color:#d3d2cf; text-align:left; font-size:12px; font-weight:800; letter-spacing:.055em; }
 .auth-field > span:first-child { padding-left:1px; }
 .auth-input-wrap { min-height:47px; display:flex; align-items:center; gap:10px; padding:0 12px; border:1px solid #303238; border-radius:4px; background:#0d0f13; transition:border-color 150ms ease, box-shadow 150ms ease; }
@@ -96,5 +108,5 @@
 }
 @media(prefers-reduced-motion:reduce) {
   .auth-input-wrap, .auth-submit { transition:none; }
-  .signup-details:not([hidden]), .signin-details:not([hidden]) { animation:none; }
+  .signup-details:not([hidden]), .signin-details:not([hidden]), .signup-otp:not([hidden]) { animation:none; }
 }

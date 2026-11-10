@@ -6,9 +6,12 @@ const accountPanel = document.querySelector('#account-panel');
 let mode = new URLSearchParams(location.search).get('recovery') === '1' ? 'recovery' : 'signin';
 let signupStage = 1;
 let currentUser = null;
+let pendingSignup = null;
+let resendTimer = null;
+let resendRemaining = 0;
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 
-function say(message, kind = '', target = mode === 'signup' ? '.signup-form-status' : '.signin-details .form-status') {
+function say(message, kind = '', target = mode === 'signup' ? (signupStage === 3 ? '.otp-form-status' : '.signup-form-status') : '.signin-details .form-status') {
   const status = document.querySelector(target);
   if (!status) return;
   status.textContent = message;
@@ -19,6 +22,7 @@ function authErrorMessage(error) {
   if (error?.status === 429 || /rate limit|too many requests/i.test(detail)) return 'Too many attempts in a short time. Please wait a little, then try again.';
   if (/invalid login credentials/i.test(detail)) return 'Email or password is incorrect. Check your details and try again.';
   if (/email not confirmed/i.test(detail)) return 'Please confirm your email using the link we sent before signing in.';
+  if (/invalid.*(otp|token)|token.*(expired|invalid)|otp.*(expired|invalid)/i.test(detail)) return 'That code is invalid or expired. Check the latest code and try again.';
   if (/password.*(weak|short|length)/i.test(detail)) return 'Choose a stronger password with at least 8 characters.';
   if (/permission|row-level|not authorized/i.test(detail)) return 'Access was denied for this action. Sign in again or contact the shop if it continues.';
   if (/expired|jwt/i.test(detail)) return 'Your session expired. Sign in again and retry.';
@@ -37,40 +41,71 @@ window.addEventListener('online', () => {
   if (currentUser) { accountConnection.hidden = false; accountConnection.textContent = 'Connection restored. Refresh your orders to get the latest status.'; accountConnection.dataset.kind = 'success'; }
 });
 networkState();
+function selectedChannel() { return form.elements.signup_channel.value; }
+function normalizedPhone(value) {
+  let digits = String(value || '').replace(/[^\d]/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0') && digits.length === 11) digits = `63${digits.slice(1)}`;
+  if (/^[1-9]\d{7,14}$/.test(digits)) return `+${digits}`;
+  return '';
+}
 function updateMode() {
   const signup = mode === 'signup';
   const recovery = mode === 'recovery';
-  const email = form.elements.email;
+  const channel = selectedChannel();
+  const identifier = form.elements.identifier;
   const emailField = document.querySelector('#email-field');
   const signupDetails = document.querySelector('#signup-details');
+  const otpDetails = document.querySelector('#signup-otp');
   const signinDetails = document.querySelector('#signin-details');
   const progress = document.querySelector('#signup-progress');
+  const methodPicker = document.querySelector('#signup-methods');
   const continueButton = document.querySelector('#continue-signup');
   const changeEmail = document.querySelector('#change-signup-email');
-  const signupFields = ['full_name', 'phone', 'password', 'confirm_password'];
-  const signupReady = signup && signupStage === 2;
-  document.querySelector('#auth-title').textContent = recovery ? 'RESET PASSWORD' : signup ? 'CREATE ACCOUNT' : 'SIGN IN';
-  document.querySelector('#auth-lead').textContent = recovery ? 'Choose a new password for your account.' : signup ? 'Create your Hushley Billiards Shop account.' : 'Access your Hushley Billiards Shop account.';
+  const signupDetailsVisible = signup && signupStage === 2;
+  const otpVisible = signup && signupStage === 3;
+  document.querySelector('#auth-title').textContent = recovery ? 'RESET PASSWORD' : otpVisible ? 'VERIFY YOUR CONTACT' : signup ? 'CREATE ACCOUNT' : 'SIGN IN';
+  document.querySelector('#auth-lead').textContent = recovery ? 'Choose a new password for your account.' : otpVisible ? 'Enter the one-time code to finish creating your account.' : signup ? 'Create your Hushley Billiards Shop account.' : 'Access your Hushley Billiards Shop account.';
   document.querySelector('#switch-prompt').textContent = signup ? 'Already have an account?' : 'New to Hushley?';
   document.querySelector('#switch-mode').textContent = signup ? 'SIGN IN' : 'CREATE AN ACCOUNT';
   progress.hidden = !signup;
-  signupDetails.hidden = !signupReady;
+  methodPicker.hidden = !signup || signupStage !== 1;
+  signupDetails.hidden = !signupDetailsVisible;
+  otpDetails.hidden = !otpVisible;
   signinDetails.hidden = signup;
-  emailField.hidden = recovery;
-  email.readOnly = signupReady;
-  email.required = !recovery;
-  continueButton.hidden = !signup || signupReady;
-  changeEmail.hidden = !signupReady;
-  document.querySelector('[data-progress-step="1"]').classList.toggle('is-complete', signupReady);
-  document.querySelector('[data-progress-step="1"]').classList.toggle('is-current', !signupReady);
-  document.querySelector('[data-progress-step="2"]').classList.toggle('is-current', signupReady);
-  signupFields.forEach((name) => { const field = form.elements[name]; field.required = signupReady && ['full_name', 'phone', 'password', 'confirm_password'].includes(name); });
-  form.elements.terms_accepted.required = signupReady;
+  emailField.hidden = recovery || otpVisible;
+  identifier.readOnly = signup && signupStage !== 1;
+  identifier.required = !recovery && !otpVisible;
+  continueButton.hidden = !signup || signupStage !== 1;
+  changeEmail.hidden = !signup || signupStage !== 2;
+  const progressLabels = [['VERIFY CONTACT', signupStage === 1], ['DETAILS', signupStage === 2], ['CODE', signupStage === 3]];
+  progressLabels.forEach(([label, active], index) => {
+    const step = document.querySelector(`[data-progress-step="${index + 1}"]`);
+    step.classList.toggle('is-current', active);
+    step.classList.toggle('is-complete', signupStage > index + 1);
+    step.lastChild.textContent = ` ${label}`;
+  });
+  form.elements.full_name.required = signupDetailsVisible;
+  form.elements.phone.required = signupDetailsVisible && channel === 'email';
+  form.elements.contact_email.required = signupDetailsVisible && channel === 'phone';
+  form.elements.password.required = signupDetailsVisible;
+  form.elements.confirm_password.required = signupDetailsVisible;
+  form.elements.terms_accepted.required = signupDetailsVisible;
+  form.elements.otp_code.required = otpVisible;
   form.elements.signin_password.required = !signup;
-  form.elements.password.required = signupReady;
-  form.elements.password.autocomplete = recovery ? 'new-password' : 'new-password';
-  form.elements.email.autocomplete = 'email';
-  signupDetails.querySelector('.auth-submit').textContent = 'CREATE ACCOUNT →';
+  identifier.autocomplete = recovery ? 'email' : 'username';
+  const initialStep = signup && signupStage === 1;
+  const emailChannel = channel === 'email';
+  const label = document.querySelector('#email-label');
+  label.textContent = recovery ? 'EMAIL ADDRESS' : initialStep ? (emailChannel ? 'EMAIL ADDRESS TO VERIFY' : 'MOBILE NUMBER TO VERIFY') : (signup && !otpVisible ? (emailChannel ? 'VERIFIED EMAIL ADDRESS' : 'VERIFIED MOBILE NUMBER') : 'EMAIL OR MOBILE NUMBER');
+  identifier.type = initialStep && emailChannel || recovery ? 'email' : 'text';
+  identifier.inputMode = initialStep && !emailChannel ? 'tel' : 'email';
+  identifier.placeholder = initialStep ? (emailChannel ? 'name@example.com' : '+63 9XX XXX XXXX') : 'Email address or +63 mobile number';
+  document.querySelector('#identifier-icon').textContent = initialStep && !emailChannel ? 'call' : 'mail';
+  document.querySelector('.contact-email-field').hidden = channel !== 'phone';
+  document.querySelector('.phone-field').hidden = channel === 'phone';
+  signupDetails.querySelector('.auth-submit').textContent = 'SEND VERIFICATION CODE →';
+  document.querySelector('#verify-signup-code').textContent = 'VERIFY CODE';
   signinDetails.querySelector('.auth-submit').textContent = recovery ? 'UPDATE PASSWORD' : 'SIGN IN →';
   signinDetails.querySelector('.auth-field > span:first-child').textContent = recovery ? 'NEW PASSWORD' : 'PASSWORD';
   form.elements.signin_password.autocomplete = recovery ? 'new-password' : 'current-password';
@@ -81,13 +116,14 @@ function updateMode() {
   document.querySelector('#forgot-password').textContent = 'FORGOT PASSWORD?';
   form.elements.password.placeholder = 'At least 8 characters';
   document.querySelector('.confirm-password-field').hidden = !signup;
-  document.querySelector('.phone-field').hidden = !signup;
+  document.querySelector('.phone-field').hidden = !signup || channel === 'phone';
+  document.querySelector('#switch-mode').disabled = otpVisible;
 }
 async function showAccount(user) {
   currentUser = user;
   authCard.hidden = true;
   accountPanel.hidden = false;
-  document.querySelector('#account-email').textContent = user.email || '';
+  document.querySelector('#account-email').textContent = user.email || user.phone || user.user_metadata?.contact_email || '';
   document.querySelector('#admin-link').hidden = user.app_metadata?.role !== 'admin';
   if (user.app_metadata?.role === 'admin' && new URLSearchParams(location.search).get('next') === '/admin.html') location.replace('/admin.html');
   if (new URLSearchParams(location.search).get('next') === '/checkout.html') location.replace('/checkout.html');
@@ -116,28 +152,52 @@ async function loadOrders() {
 document.querySelector('#switch-mode').addEventListener('click', () => {
   mode = mode === 'signin' ? 'signup' : 'signin';
   signupStage = 1;
+  pendingSignup = null;
   say('');
   updateMode();
 });
 document.querySelector('#continue-signup').addEventListener('click', () => {
-  const email = form.elements.email;
-  email.setCustomValidity('');
-  if (!email.value.trim() || !email.checkValidity()) {
-    email.setCustomValidity('Enter a valid email address.');
-    email.reportValidity();
-    email.focus();
-    return;
+  const identifier = form.elements.identifier;
+  const channel = selectedChannel();
+  identifier.setCustomValidity('');
+  if (channel === 'email') {
+    identifier.type = 'email';
+    identifier.value = identifier.value.trim().toLowerCase();
+    if (!identifier.value || !identifier.checkValidity()) {
+      identifier.setCustomValidity('Enter a valid email address.');
+      identifier.reportValidity(); identifier.focus(); return;
+    }
+  } else {
+    const phone = normalizedPhone(identifier.value);
+    if (!phone) {
+      identifier.setCustomValidity('Enter a valid phone number with a country code, such as +63 9XX XXX XXXX.');
+      identifier.reportValidity(); identifier.focus(); return;
+    }
+    identifier.value = phone;
   }
-  email.value = email.value.trim().toLowerCase();
   signupStage = 2;
   updateMode();
   form.elements.full_name.focus();
 });
-form.elements.email.addEventListener('input', () => form.elements.email.setCustomValidity(''));
+form.elements.identifier.addEventListener('input', () => form.elements.identifier.setCustomValidity(''));
+form.querySelectorAll('[name="signup_channel"]').forEach((radio) => radio.addEventListener('change', () => {
+  const identifier = form.elements.identifier;
+  identifier.value = '';
+  identifier.setCustomValidity('');
+  updateMode();
+  identifier.focus();
+}));
 document.querySelector('#change-signup-email').addEventListener('click', () => {
   signupStage = 1;
+  pendingSignup = null;
   updateMode();
-  form.elements.email.focus();
+  form.elements.identifier.focus();
+});
+document.querySelector('#change-signup-contact').addEventListener('click', () => {
+  signupStage = 1;
+  pendingSignup = null;
+  updateMode();
+  form.elements.identifier.focus();
 });
 document.querySelectorAll('[data-toggle-password]').forEach((button) => button.addEventListener('click', () => {
   const input = form.elements[button.dataset.togglePassword];
@@ -148,8 +208,9 @@ document.querySelectorAll('[data-toggle-password]').forEach((button) => button.a
 }));
 document.querySelector('#forgot-password').addEventListener('click', async () => {
   if (!isSupabaseConfigured) return say('Connect the client-owned Supabase project before using password recovery.', 'error');
-  const email = form.elements.email.value.trim().toLowerCase();
-  if (!email) return say('Enter your email address first.', 'error');
+  const identifier = form.elements.identifier.value.trim();
+  if (!identifier || !identifier.includes('@')) return say('Password recovery uses your account email. Enter an email address; phone-only accounts need a linked email to reset here.', 'error');
+  const email = identifier.toLowerCase();
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/account.html?recovery=1` });
   say(error ? authErrorMessage(error) : 'If an account exists for that email, password reset instructions are on the way.', error ? 'error' : 'success');
 });
@@ -186,30 +247,82 @@ document.querySelector('#sign-out').addEventListener('click', async () => {
   accountPanel.hidden = true;
   authCard.hidden = false;
 });
+function startResendCooldown(seconds = 60) {
+  clearInterval(resendTimer);
+  const button = document.querySelector('#resend-signup-code');
+  resendRemaining = seconds;
+  button.disabled = true;
+  button.textContent = `RESEND CODE IN ${resendRemaining}s`;
+  resendTimer = setInterval(() => {
+    resendRemaining -= 1;
+    if (resendRemaining <= 0) {
+      clearInterval(resendTimer);
+      resendTimer = null;
+      button.disabled = false;
+      button.textContent = 'RESEND CODE';
+    } else button.textContent = `RESEND CODE IN ${resendRemaining}s`;
+  }, 1000);
+}
+document.querySelector('#resend-signup-code').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  if (!pendingSignup || button.disabled || !isSupabaseConfigured) return;
+  button.disabled = true;
+  button.textContent = 'SENDING…';
+  try {
+    const response = pendingSignup.channel === 'email'
+      ? await supabase.auth.resend({ type: 'signup', email: pendingSignup.email })
+      : await supabase.auth.resend({ type: 'sms', phone: pendingSignup.phone });
+    if (response.error) throw response.error;
+    say(`A new verification code was sent to ${pendingSignup.destination}.`, 'success');
+    startResendCooldown();
+  } catch (error) {
+    say(authErrorMessage(error), 'error');
+    if (error?.status === 429 || /rate limit|too many requests/i.test(error?.message || '')) startResendCooldown();
+    else { button.disabled = false; button.textContent = 'RESEND CODE'; }
+  }
+});
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (mode === 'signup' && signupStage === 1) return document.querySelector('#continue-signup').click();
-  const activeDetails = mode === 'signup' ? document.querySelector('#signup-details') : document.querySelector('#signin-details');
+  const activeDetails = mode === 'signup'
+    ? document.querySelector(signupStage === 3 ? '#signup-otp' : '#signup-details')
+    : document.querySelector('#signin-details');
   for (const field of activeDetails.querySelectorAll('input[required]')) {
     field.setCustomValidity('');
     if (!field.checkValidity()) { field.reportValidity(); field.focus(); return say('Check the highlighted details and try again.', 'error'); }
   }
-  if (mode === 'signup' && form.elements.password.value !== form.elements.confirm_password.value) {
+  if (mode === 'signup' && signupStage === 2 && form.elements.password.value !== form.elements.confirm_password.value) {
     form.elements.confirm_password.setCustomValidity('Passwords do not match.');
     form.elements.confirm_password.reportValidity();
     form.elements.confirm_password.focus();
     return say('Make sure both password fields match.', 'error');
   }
+  if (mode === 'signup' && signupStage === 2 && selectedChannel() === 'email' && !normalizedPhone(form.elements.phone.value)) {
+    form.elements.phone.setCustomValidity('Enter a valid mobile number, including country code.');
+    form.elements.phone.reportValidity(); form.elements.phone.focus();
+    return say('Enter a valid mobile number so the shop can contact you about delivery.', 'error');
+  }
+  if (mode === 'signup' && signupStage === 2 && selectedChannel() === 'phone') {
+    form.elements.contact_email.setCustomValidity('');
+    if (!form.elements.contact_email.value.trim() || !form.elements.contact_email.checkValidity()) {
+      form.elements.contact_email.setCustomValidity('Enter a valid email for order updates.');
+      form.elements.contact_email.reportValidity(); form.elements.contact_email.focus();
+      return say('Enter a valid email address for order updates.', 'error');
+    }
+  }
   if (!isSupabaseConfigured) return say('Connect the client-owned Supabase project before using account features.', 'error');
   const values = new FormData(form);
-  const email = String(values.get('email')).trim().toLowerCase();
-  const password = String(mode === 'signup' ? values.get('password') : values.get('signin_password'));
-  const button = mode === 'signup' ? document.querySelector('#signup-details .auth-submit') : document.querySelector('#signin-details .auth-submit');
+  const identifier = String(values.get('identifier') || '').trim();
+  const channel = selectedChannel();
+  const password = String(mode === 'signup' && signupStage === 2 ? values.get('password') : values.get('signin_password'));
+  const button = mode === 'signup'
+    ? document.querySelector(signupStage === 3 ? '#verify-signup-code' : '#signup-details .auth-submit')
+    : document.querySelector('#signin-details .auth-submit');
   button.disabled = true;
   button.dataset.label = button.textContent;
   button.textContent = 'PLEASE WAIT…';
-  say(mode === 'signup' ? 'Creating your account…' : mode === 'recovery' ? 'Updating your password…' : 'Signing in…');
-  const pendingMessage = mode === 'signup' ? 'Creating your account…' : mode === 'recovery' ? 'Updating your password…' : 'Signing in…';
+  const pendingMessage = mode === 'signup' ? (signupStage === 2 ? 'Creating your account and sending a verification code…' : 'Verifying your code…') : mode === 'recovery' ? 'Updating your password…' : 'Signing in…';
+  say(pendingMessage);
   const slowTimer = setTimeout(() => say(`${pendingMessage} This is taking longer than usual. Please keep this page open.`, ''), 7000);
   try {
     if (mode === 'recovery') {
@@ -219,15 +332,51 @@ form.addEventListener('submit', async (event) => {
       await showAccount(data.user);
       orderNotice.textContent = 'Password updated successfully.';
       orderNotice.dataset.kind = 'success';
-    } else if (mode === 'signup') {
+    } else if (mode === 'signup' && signupStage === 2) {
       const fullName = String(values.get('full_name')).trim();
-      const phone = String(values.get('phone')).trim();
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName, phone } } });
+      const phone = channel === 'phone' ? normalizedPhone(identifier) : normalizedPhone(String(values.get('phone')));
+      const email = channel === 'email' ? identifier.toLowerCase() : String(values.get('contact_email')).trim().toLowerCase();
+      const metadata = channel === 'phone' ? { full_name: fullName, phone, contact_email: email } : { full_name: fullName, phone };
+      const credentials = channel === 'phone'
+        ? { phone, password, options: { channel: 'sms', data: metadata } }
+        : { email, password, options: { data: metadata } };
+      const { data, error } = await supabase.auth.signUp(credentials);
       if (error) throw error;
-      if (data.session) await showAccount(data.user);
-      else say('Account created. Check your email to confirm it, then sign in.', 'success');
+      if (data.session) {
+        await supabase.auth.signOut();
+        throw new Error('OTP confirmation is disabled in the connected Supabase Auth settings. Enable email or phone confirmations before customers can sign up.');
+      }
+      pendingSignup = { channel, email, phone, destination: channel === 'email' ? email : phone };
+      document.querySelector('#otp-destination').textContent = `Enter the one-time code sent to ${pendingSignup.destination}.`;
+      signupStage = 3;
+      updateMode();
+      startResendCooldown();
+      form.elements.otp_code.focus();
+      say('Code sent. It must be verified before your account can sign in.', 'success');
+    } else if (mode === 'signup' && signupStage === 3) {
+      if (!pendingSignup) throw new Error('Your verification request expired. Start signup again to request a new code.');
+      const token = String(values.get('otp_code') || '').replace(/\s+/g, '');
+      const response = pendingSignup.channel === 'email'
+        ? await supabase.auth.verifyOtp({ email: pendingSignup.email, token, type: 'email' })
+        : await supabase.auth.verifyOtp({ phone: pendingSignup.phone, token, type: 'sms' });
+      if (response.error) throw response.error;
+      if (!response.data?.session || !response.data?.user) throw new Error('Supabase did not return a verified account session. Check Auth confirmation settings and try again.');
+      clearInterval(resendTimer);
+      resendTimer = null;
+      pendingSignup = null;
+      signupStage = 1;
+      mode = 'signin';
+      updateMode();
+      await showAccount(response.data.user);
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      let credentials;
+      if (identifier.includes('@')) credentials = { email: identifier.toLowerCase(), password };
+      else {
+        const phone = normalizedPhone(identifier);
+        if (!phone) throw new Error('Enter your email address or a phone number with country code.');
+        credentials = { phone, password };
+      }
+      const { data, error } = await supabase.auth.signInWithPassword(credentials);
       if (error) throw error;
       await showAccount(data.user);
     }
@@ -249,7 +398,7 @@ if (isSupabaseConfigured) {
       accountPanel.hidden = true;
       updateMode();
       say('Set a new password for your account.');
-    } else if (session?.user && !currentUser && mode !== 'recovery') showAccount(session.user);
+    } else if (session?.user && !currentUser && mode !== 'recovery' && mode !== 'signup') showAccount(session.user);
     if (!session && currentUser) {
       currentUser = null;
       accountPanel.hidden = true;

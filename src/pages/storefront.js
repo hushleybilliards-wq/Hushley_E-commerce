@@ -20,7 +20,6 @@ const overlay = document.querySelector('.overlay');
 const toast = document.querySelector('.toast');
 const status = document.querySelector('#catalog-status');
 const categoryTrack = document.querySelector('#hero-category-track');
-const carouselToggle = document.querySelector('#category-carousel-toggle');
 const fallbackCategories = [
   { id: 'cues', name: 'Billiard Cues' }, { id: 'shafts', name: 'Carbon Shafts' },
   { id: 'chalk', name: 'Billiard Chalk' }, { id: 'tips', name: 'Billiard Tips' },
@@ -110,7 +109,7 @@ function renderProducts() {
   grid.innerHTML = visible.map((item) => `
     <article class="product-card" data-product-card="${escapeHtml(item.id)}">
       <div class="product-image"><span class="product-tag">${escapeHtml(item.tag)}</span><div class="product-visual"><img class="product-photo" src="${escapeHtml(item.image_urls[0])}" alt="${escapeHtml(item.name)}" loading="lazy"></div><button class="save-button ${saved.has(item.id) ? 'is-saved' : ''}" data-save="${escapeHtml(item.id)}" aria-label="${saved.has(item.id) ? 'Remove' : 'Save'} ${escapeHtml(item.name)}" aria-pressed="${saved.has(item.id)}"><span class="material-symbols-outlined" aria-hidden="true">${saved.has(item.id) ? 'favorite' : 'favorite_border'}</span></button></div>
-      <div class="product-meta"><span>${escapeHtml(item.category)}</span><span class="stock-dot">${item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
+      <div class="product-meta"><span class="product-category-label">${escapeHtml(item.category)}</span><span class="stock-dot">${item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
       <h3>${escapeHtml(item.name)}</h3><p class="product-description">${escapeHtml(item.description)}</p>
       ${renderSpecifications(item.specifications)}
       ${getProductOptions(item).length ? `<div class="product-options"><p class="option-heading">SELECT YOUR OPTIONS</p>${getProductOptions(item).map((option, index) => {
@@ -120,7 +119,7 @@ function renderProducts() {
         const label = `${name}${required ? ' (required)' : ' (optional)'}`;
         return `<label class="product-option">${escapeHtml(label)}<select data-product-option="${index}" data-option-name="${escapeHtml(name)}" ${required ? 'required' : ''} aria-label="${escapeHtml(label)}"><option value="">${required ? `Choose ${escapeHtml(name.toLowerCase())}` : 'No preference'}</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}</select></label>`;
       }).join('')}<p class="product-option-error" role="status" aria-live="polite" hidden></p></div>` : ''}
-      <div class="product-buy"><strong>${Number.isFinite(Number(item.price)) && item.price !== undefined ? money(item.price) : 'PRICE TO BE CONFIRMED'}</strong><button class="add-button" data-add="${escapeHtml(item.id)}" ${item.available_count === 0 ? 'disabled' : ''}><span class="material-symbols-outlined" aria-hidden="true">add_shopping_cart</span><span>Add to cart</span></button></div>
+      <div class="product-buy"><strong>${Number.isFinite(Number(item.price)) && item.price !== undefined ? money(item.price) : 'PRICE TO BE CONFIRMED'}</strong><div class="product-actions"><button class="add-button" data-add="${escapeHtml(item.id)}" ${item.available_count === 0 ? 'disabled' : ''}><span class="material-symbols-outlined" aria-hidden="true">add_shopping_cart</span><span>Add to cart</span></button><button class="buy-now-button" data-buy-now="${escapeHtml(item.id)}" ${item.available_count === 0 ? 'disabled' : ''}>Buy now</button></div></div>
     </article>`).join('');
   grid.setAttribute('aria-busy', 'false');
 }
@@ -157,7 +156,7 @@ function updateCart() {
 }
 function addProduct(id, card) {
   const product = products.find((item) => item.id === id);
-  if (!product || product.available_count === 0) return showToast('THIS ITEM IS OUT OF STOCK');
+  if (!product || product.available_count === 0) { showToast('THIS ITEM IS OUT OF STOCK'); return false; }
   const selectors = [...card.querySelectorAll('[data-option-name]')];
   const missing = selectors.find((selector) => selector.required && !selector.value);
   const error = card.querySelector('.product-option-error');
@@ -165,14 +164,14 @@ function addProduct(id, card) {
     if (error) { error.textContent = `Choose ${missing.dataset.optionName} before adding this item.`; error.hidden = false; }
     missing.focus();
     missing.reportValidity();
-    return;
+    return false;
   }
   if (error) { error.textContent = ''; error.hidden = true; }
   const selected_options = Object.fromEntries(selectors.filter((selector) => selector.value).map((selector) => [selector.dataset.optionName, selector.value]));
   const key = cartKey(product, selected_options);
   const current = cart.get(key);
   cart.set(key, { product, quantity: (current?.quantity || 0) + 1, selected_options });
-  updateCart(); showToast(`${product.name} ADDED TO CART`);
+  updateCart(); showToast(`${product.name} ADDED TO CART`); return true;
 }
 async function loadCatalog() {
   if (!isSupabaseConfigured) {
@@ -216,6 +215,8 @@ async function loadCatalog() {
 }
 
 grid.addEventListener('click', (event) => {
+  const buyNow = event.target.closest('[data-buy-now]');
+  if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'))) { window.location.href = '/checkout.html'; return; }
   const add = event.target.closest('[data-add]'); if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
   const save = event.target.closest('[data-save]');
   if (save) {
@@ -256,13 +257,6 @@ document.querySelector('.checkout-button').addEventListener('click', () => { win
 categoryTrack?.addEventListener('click', (event) => {
   const card = event.target.closest('[data-category-id]');
   if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);
-});
-carouselToggle?.addEventListener('click', () => {
-  const paused = categoryTrack.classList.toggle('is-paused');
-  carouselToggle.setAttribute('aria-pressed', String(paused));
-  carouselToggle.setAttribute('aria-label', paused ? 'Play category carousel' : 'Pause category carousel');
-  carouselToggle.querySelector('.material-symbols-outlined').textContent = paused ? 'play_arrow' : 'pause';
-  carouselToggle.querySelector('span:last-child').textContent = paused ? 'PLAY' : 'PAUSE';
 });
 document.querySelector('.menu-toggle').addEventListener('click', (event) => {
   const nav = document.querySelector('.main-nav'); const opened = nav.classList.toggle('open');

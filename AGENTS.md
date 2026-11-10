@@ -40,6 +40,15 @@ Preserve the current root page URLs unless a routing change is intentional and a
 
 The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cue cases, billiard ball sets, and other billiard accessories. Products can have variations such as size, color, cue-tip hardness (Soft, Medium, Hard), and item-specific specifications. Keep variant choices and the selected variant on the order line so the shop can fulfill the correct item. Do not assume every product shares the same options.
 
+## Confirmed customer account verification
+
+- Signup offers verification through either email OTP or SMS OTP. Customers choose one as their verified Supabase Auth identity and then set a password; do not show the account as signed in until `verifyOtp` succeeds.
+- Collect the mobile number as a contact for email-primary signups. For phone-primary signups, collect an email for order contact but treat it as unverified metadata; checkout still collects the customer email for each order.
+- Normalize Philippine mobile numbers to E.164 before calling Supabase Auth. Accept an international number only when it is valid for the Auth provider.
+- Sign-in accepts the verified email or phone identity with its password. Password recovery supports email identities; phone-only customers need a linked email or support process until phone recovery is separately configured.
+- The production Supabase project must have email confirmation enabled and the Confirm Signup template must include `{{ .Token }}` for a code-entry flow. Phone signup requires phone auth and confirmation enabled, an SMS provider configured with the `{{ .Code }}` template, and provider credentials kept in Supabase settings (never browser env vars).
+- Keep Auth server rate limits in force and show throttling responses. Do not use client-only counters as the security control. The Hushley administrator promotion remains limited to the confirmed owner email; phone signup does not grant admin access.
+
 ## Confirmed checkout and payment requirements
 
 - Checkout requires a customer to choose GCash, MariBank, PayPal, or PNB bank transfer.
@@ -76,7 +85,7 @@ The production Supabase project has four migrations in `supabase/migrations/`. P
 
 Checkout currently asks for a courier and payment method. Shipping fee is currently editable/confirmed by staff in the admin page. The fixed domestic/international rate rules above are requirements to implement; do not assume the current checkout calculates them. Inspect the current UI, JavaScript, migration, and RLS before changing behavior. Keep the Lalamove website shipping amount at zero and represent international shipping as an estimate with a manual adjustment process.
 
-The owner has an existing Supabase project, GitHub repository, and Vercel account. Do not create replacements. Current check: Supabase is linked and migrated; project code is published on `main` in the existing public GitHub repo; no Hushley Vercel project is visible to the connected Vercel account. Verify access and target before any further deployment. Never print `.env` contents or expose secret/service-role credentials.
+The owner has an existing Supabase project, GitHub repository, and Vercel account. Do not create replacements. Current check: Supabase is linked and migrated; project code is published on `main` in the existing public GitHub repo; the public deployment reflects current assets, but no Hushley Vercel project is visible to the connected Vercel account. Verify access and target before any direct deployment. Never print `.env` contents or expose secret/service-role credentials.
 
 ## Working guidance
 

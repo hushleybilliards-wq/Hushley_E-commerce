@@ -13,8 +13,13 @@ body {
 
 body :not(.material-symbols-outlined) {
   font-family: var(--sans) !important;
+  font-weight: 400 !important;
 }
 
+body h1 { font-size: 24px !important; }
+body h2 { font-size: 20px !important; }
+body h3 { font-size: 18px !important; }
+body h4, body h5, body h6 { font-size: 16px !important; }
 body :is(p, a, button, input, select, textarea, label, small, td, th, summary, li, span, strong, dt, dd, kbd):not(.material-symbols-outlined) {
   font-size: max(14px, 1em) !important;
   line-height: 1.45;

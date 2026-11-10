@@ -40,23 +40,35 @@
 
         <form id="auth-form" novalidate>
           <div class="signup-progress" id="signup-progress" hidden>
-            <span class="progress-step is-current" data-progress-step="1"><span>1</span> EMAIL</span>
+            <span class="progress-step is-current" data-progress-step="1"><span>1</span> VERIFY CONTACT</span>
             <span class="progress-line" aria-hidden="true"></span>
             <span class="progress-step" data-progress-step="2"><span>2</span> DETAILS</span>
+            <span class="progress-line" aria-hidden="true"></span>
+            <span class="progress-step" data-progress-step="3"><span>3</span> CODE</span>
           </div>
 
+          <fieldset class="signup-methods" id="signup-methods" hidden>
+            <legend>CHOOSE HOW TO VERIFY</legend>
+            <label><input type="radio" name="signup_channel" value="email" checked /><span class="material-symbols-outlined" aria-hidden="true">mail</span> Email code</label>
+            <label><input type="radio" name="signup_channel" value="phone" /><span class="material-symbols-outlined" aria-hidden="true">call</span> SMS code</label>
+          </fieldset>
           <label class="auth-field" id="email-field">
-            <span id="email-label">EMAIL ADDRESS</span>
-            <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">mail</span><input name="email" type="email" autocomplete="email" placeholder="name@example.com" required /></span>
+            <span id="email-label">EMAIL OR MOBILE NUMBER</span>
+            <span class="auth-input-wrap"><span class="material-symbols-outlined" id="identifier-icon" aria-hidden="true">mail</span><input name="identifier" type="text" autocomplete="username" inputmode="email" placeholder="name@example.com or +63 9XX XXX XXXX" required /></span>
           </label>
           <button class="email-continue button button-primary" id="continue-signup" type="button" hidden>CONTINUE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
-          <button class="change-email" id="change-signup-email" type="button" hidden>CHANGE EMAIL</button>
+          <button class="change-email" id="change-signup-email" type="button" hidden>CHANGE CONTACT</button>
 
           <div class="signup-details" id="signup-details" hidden>
-            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span> We’ll send an email confirmation to the address above.</p>
+            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> We’ll send a one-time verification code to your selected contact.</p>
             <label class="auth-field name-field">
               <span>FULL NAME</span>
               <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">person</span><input name="full_name" autocomplete="name" minlength="2" placeholder="Your full name" /></span>
+            </label>
+            <label class="auth-field contact-email-field" hidden>
+              <span>EMAIL FOR ORDER UPDATES</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">mail</span><input name="contact_email" type="email" autocomplete="email" placeholder="name@example.com" /></span>
+              <small>This email is for order contact. The phone number is your verified sign-in contact.</small>
             </label>
             <label class="auth-field phone-field">
               <span>MOBILE NUMBER</span>
@@ -73,7 +85,15 @@
             </label>
             <label class="terms-check"><input name="terms_accepted" type="checkbox" /><span>I agree to Hushley’s customer account terms and privacy notice.</span></label>
             <p class="form-status signup-form-status" role="status" aria-live="polite"></p>
-            <button class="button button-primary auth-submit" type="submit">CREATE ACCOUNT <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+            <button class="button button-primary auth-submit" type="submit">SEND VERIFICATION CODE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+          </div>
+
+          <div class="signup-otp" id="signup-otp" hidden>
+            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span><span id="otp-destination">Enter the code we sent.</span></p>
+            <label class="auth-field"><span>ONE-TIME CODE</span><span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">password</span><input name="otp_code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="Enter your code" /></span></label>
+            <p class="form-status otp-form-status" role="status" aria-live="polite"></p>
+            <button class="button button-primary auth-submit" id="verify-signup-code" type="submit">VERIFY CODE</button>
+            <div class="otp-actions"><button type="button" id="resend-signup-code" disabled>RESEND CODE IN 60s</button><button type="button" id="change-signup-contact">CHANGE CONTACT</button></div>
           </div>
 
           <div class="signin-details" id="signin-details">
