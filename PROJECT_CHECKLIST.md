@@ -1,15 +1,15 @@
 # Hushley Ecommerce Project Checklist
 
-Last reviewed: 10 November 2026 (Asia/Manila)
+Last reviewed: 11 November 2026 (Asia/Manila)
 
 ## Status at a glance
 
 | Area | Status | Evidence / next action |
 |---|---|---|
 | Storefront and admin UI | In progress | Admin product create/edit supports images, descriptions, SKU, options, specifications, pricing, stock, and publish state. Storefront displays only active, complete products from Supabase. Readability stylesheet uses a conventional system font. Production build passes; authenticated UI flow remains to verify. |
-| Supabase production schema | Complete | Three local migrations applied; remote history matches local. Core tables, RPC signature, and private proof bucket verified. |
+| Supabase production schema | Complete | Four local migrations applied; remote history matches local. Core tables, RPC signature, private proof bucket, and verified-owner admin trigger verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Complete | Latest storefront/admin update is published to the existing public repository on `main` at `d648147`; `.env`, `dist/`, and `node_modules/` are excluded. |
+| GitHub source | Complete | Latest account form update is published to the existing public repository on `main` at `b2ff301`; `.env`, `dist/`, and `node_modules/` are excluded. |
 | Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
@@ -17,7 +17,7 @@ Last reviewed: 10 November 2026 (Asia/Manila)
 
 - [x] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git` (`main`).
 - [x] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
-- [x] Publish the reviewed project to the existing public GitHub repository; latest published commit is `d648147` on `main`.
+- [x] Publish the reviewed project to the existing public GitHub repository; latest published commit is `b2ff301` on `main`.
 - [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible.
 - [ ] Configure Vercel production environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a Supabase secret/service-role key in a `VITE_*` variable.
 - [ ] Deploy a preview and verify storefront, account, checkout, and admin routes.
@@ -29,6 +29,7 @@ Last reviewed: 10 November 2026 (Asia/Manila)
 - [x] Apply `20261108031340_hushley_commerce_auth.sql`.
 - [x] Apply `20261109105526_hushley_shipping_options_payment_guards.sql`.
 - [x] Apply `20261109125917_hushley_private_payment_proof_bucket.sql`.
+- [x] Apply `20261110160235_hushley_owner_admin_role.sql`; verified email `hushleybilliards@gmail.com` receives trusted admin metadata after confirmation.
 - [x] Verify remote migration history matches the three local versions.
 - [x] Verify commerce tables and admin helper exist.
 - [x] Verify `place_order` includes `p_shipping_region`.
@@ -62,8 +63,9 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## 5. Admin operations
 
-- [ ] Create/sign up the business owner account `hushleybilliards@gmail.com` through the account page and confirm the email. Production Supabase currently has no matching Auth account, so the admin role cannot yet be assigned.
-- [ ] Assign the trusted `app_metadata.role = 'admin'` claim in Supabase, then sign out and back in to refresh the JWT.
+- [ ] Configure Supabase URL and publishable key in the active Vercel project's Production environment and redeploy; current deployed account page says Supabase is not connected.
+- [ ] Sign up the business owner account `hushleybilliards@gmail.com` through the deployed account page and confirm the email. Production Supabase currently has no matching Auth account.
+- [x] Install verified-email admin promotion trigger; after signup and email confirmation, sign out and back in to refresh the JWT.
 - [ ] Confirm non-admin accounts cannot access admin pages or admin RPC actions.
 - [ ] Test manual payment approval/rejection, stock adjustments, order status changes, shipping quote confirmation, and tracking entry.
 - [ ] Confirm staff have a process for expired unpaid orders; automatic reservation cleanup is not configured.
