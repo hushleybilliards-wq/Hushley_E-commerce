@@ -91,6 +91,7 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## Current external blockers
 
-1. The connected Vercel account has no Hushley project or deployment for this GitHub repo. The correct client team/project must be made accessible before deploying.
-2. The production catalog is empty: no products are seeded yet. The client must supply approved catalog content, prices, images, variants, stock, and shipping classifications.
-3. The production domain and administrator account are not yet configured; Auth redirects and end-to-end flow verification depend on them.
+1. Commit `b76b071` (`Add OTP signup and compact storefront cards`) is on `main`; the public account page currently serves the matching built asset `account-7mci0CVg.js`. This confirms that this UI/signup update reached the existing Vercel URL. Vercel project ownership/access remains unavailable in the connected account, so deployment settings cannot be inspected here.
+2. Configure Supabase Auth settings and verify OTP delivery before treating signup as launch-ready; see the Auth configuration items above. The site returning HTTP 200 confirms page availability, not that email/SMS providers are configured.
+3. The production catalog is empty: no products are seeded yet. The client must supply approved catalog content, prices, images, variants, stock, and shipping classifications.
+4. The production domain and administrator account are not yet configured; Auth redirects and end-to-end flow verification depend on them.
