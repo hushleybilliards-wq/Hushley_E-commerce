@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 let products = [];
 let categoryNames = new Map();
 let activeFilter = 'All';
+let activeCategoryId = null;
 let searchTerm = '';
 let slowTimer;
 let toastTimer;
@@ -18,6 +19,15 @@ const drawer = document.querySelector('.cart-drawer');
 const overlay = document.querySelector('.overlay');
 const toast = document.querySelector('.toast');
 const status = document.querySelector('#catalog-status');
+const categoryTrack = document.querySelector('#hero-category-track');
+const carouselToggle = document.querySelector('#category-carousel-toggle');
+const fallbackCategories = [
+  { id: 'cues', name: 'Billiard Cues' }, { id: 'shafts', name: 'Carbon Shafts' },
+  { id: 'chalk', name: 'Billiard Chalk' }, { id: 'tips', name: 'Billiard Tips' },
+  { id: 'ferrules', name: 'Ferrules' }, { id: 'cases', name: 'Cue Cases' },
+  { id: 'grips-leather', name: 'Cue Grips and Leather' }, { id: 'gloves', name: 'Billiard Gloves' },
+  { id: 'accessories', name: 'Cue Accessories' }, { id: 'other', name: 'Other Billiard Products' },
+];
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 const money = (value) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 function art(type) {
@@ -53,10 +63,47 @@ function setStatus(kind, message = '') {
   status.innerHTML = message;
   status.hidden = !kind;
 }
+function categoryFilter(categoryId) {
+  if (['cues', 'shafts'].includes(categoryId)) return 'Cues';
+  if (categoryId === 'chalk') return 'Chalk';
+  return 'Accessories';
+}
+function renderCategoryCarousel(categories, productRows = []) {
+  if (!categoryTrack) return;
+  const list = (categories?.length ? categories : fallbackCategories)
+    .filter((category) => category && typeof category.id === 'string' && typeof category.name === 'string');
+  const firstImageByCategory = new Map();
+  productRows.forEach((product) => {
+    const image = product.image_urls?.find((url) => typeof url === 'string' && url.trim());
+    if (image && !firstImageByCategory.has(product.category_id)) firstImageByCategory.set(product.category_id, image);
+  });
+  const iconFor = (name) => /cue/i.test(name) ? 'sports' : /shaft/i.test(name) ? 'straighten' : /chalk|tip|ferrule/i.test(name) ? 'ink_eraser' : /case/i.test(name) ? 'work' : /glove/i.test(name) ? 'back_hand' : 'category';
+  const card = (category, clone = false) => {
+    const image = firstImageByCategory.get(category.id);
+    const label = escapeHtml(category.name);
+    return `<button class="hero-category-card" type="button" data-category-id="${escapeHtml(category.id)}" ${clone ? 'tabindex="-1" aria-hidden="true"' : `aria-label="View ${label} products"`}>
+      <span class="hero-category-art">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" />` : `<span class="material-symbols-outlined" aria-hidden="true">${iconFor(category.name)}</span>`}</span>
+      <span class="hero-category-card-name">${label}</span><span class="material-symbols-outlined hero-category-arrow" aria-hidden="true">arrow_outward</span>
+    </button>`;
+  };
+  const html = list.map((item) => card(item)).join('');
+  categoryTrack.innerHTML = `${html}${list.map((item) => card(item, true)).join('')}`;
+  categoryTrack.dataset.categoryCount = String(list.length);
+}
+function selectCategory(categoryId) {
+  activeCategoryId = categoryId;
+  activeFilter = categoryFilter(categoryId);
+  document.querySelectorAll('.filter').forEach((filter) => {
+    const active = filter.dataset.filter === activeFilter;
+    filter.classList.toggle('active', active); filter.setAttribute('aria-pressed', String(active));
+  });
+  renderProducts();
+  document.querySelector('#products').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
 function renderProducts() {
-  const visible = products.filter((item) => (activeFilter === 'All' || item.filterCategory === activeFilter) && `${item.name} ${item.category} ${item.description || ''} ${item.sku || ''} ${JSON.stringify(item.specifications || {})}`.toLowerCase().includes(searchTerm));
+  const visible = products.filter((item) => (activeCategoryId ? item.category_id === activeCategoryId : activeFilter === 'All' || item.filterCategory === activeFilter) && `${item.name} ${item.category} ${item.description || ''} ${JSON.stringify(item.specifications || {})}`.toLowerCase().includes(searchTerm));
   if (!visible.length) {
-    grid.innerHTML = `<div class="empty-results"><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h3>${searchTerm ? 'NO MATCHES FOUND' : 'NOTHING IN THIS CATEGORY YET'}</h3><p>${searchTerm ? 'Try a different product name, category, or SKU.' : 'Choose another category to keep browsing.'}</p>${searchTerm ? '<button class="text-button" data-clear-search>Clear search</button>' : ''}</div>`;
+    grid.innerHTML = `<div class="empty-results"><span class="material-symbols-outlined" aria-hidden="true">search_off</span><h3>${searchTerm ? 'NO MATCHES FOUND' : 'NOTHING IN THIS CATEGORY YET'}</h3><p>${searchTerm ? 'Try a different product name, category, or description.' : 'Choose another category to keep browsing.'}</p>${searchTerm ? '<button class="text-button" data-clear-search>Clear search</button>' : ''}</div>`;
     grid.setAttribute('aria-busy', 'false');
     return;
   }
@@ -65,7 +112,6 @@ function renderProducts() {
       <div class="product-image"><span class="product-tag">${escapeHtml(item.tag)}</span><div class="product-visual"><img class="product-photo" src="${escapeHtml(item.image_urls[0])}" alt="${escapeHtml(item.name)}" loading="lazy"></div><button class="save-button ${saved.has(item.id) ? 'is-saved' : ''}" data-save="${escapeHtml(item.id)}" aria-label="${saved.has(item.id) ? 'Remove' : 'Save'} ${escapeHtml(item.name)}" aria-pressed="${saved.has(item.id)}"><span class="material-symbols-outlined" aria-hidden="true">${saved.has(item.id) ? 'favorite' : 'favorite_border'}</span></button></div>
       <div class="product-meta"><span>${escapeHtml(item.category)}</span><span class="stock-dot">${item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
       <h3>${escapeHtml(item.name)}</h3><p class="product-description">${escapeHtml(item.description)}</p>
-      ${item.sku ? `<div class="spec-row"><span>SKU</span><strong>${escapeHtml(item.sku)}</strong></div>` : ''}
       ${renderSpecifications(item.specifications)}
       ${getProductOptions(item).length ? `<div class="product-options"><p class="option-heading">SELECT YOUR OPTIONS</p>${getProductOptions(item).map((option, index) => {
         const name = option.name.trim();
@@ -130,6 +176,7 @@ function addProduct(id, card) {
 }
 async function loadCatalog() {
   if (!isSupabaseConfigured) {
+    renderCategoryCarousel(fallbackCategories);
     setStatus('notice', '<span class="material-symbols-outlined" aria-hidden="true">info</span><span>The product catalog is not connected. Products appear here after staff add and publish them.</span>');
     renderProducts(); updateCart(); return;
   }
@@ -139,11 +186,12 @@ async function loadCatalog() {
   clearTimeout(slowTimer);
   slowTimer = setTimeout(() => { isSlow = true; setStatus('slow', '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span><span>This is taking a little longer. Your catalog is still loading.</span>'); }, 5000);
   const [productsResult, categoriesResult] = await Promise.all([
-    supabase.from('products').select('id,name,category_id,description,sku,price,stock_quantity,reserved_quantity,image_urls,is_active,options,specifications').eq('is_active', true).order('name'),
+    supabase.from('products').select('id,name,category_id,description,price,stock_quantity,reserved_quantity,image_urls,is_active,options,specifications').eq('is_active', true).order('name'),
     supabase.from('categories').select('id,name').eq('is_active', true),
   ]);
   clearTimeout(slowTimer);
   const { data, error } = productsResult;
+  renderCategoryCarousel(categoriesResult.data || [], data || []);
   if (error) {
     setStatus('error', '<span class="material-symbols-outlined" aria-hidden="true">cloud_off</span><span>We could not load the catalog.</span><button class="status-retry" data-retry>Try again</button>');
     grid.innerHTML = '';
@@ -191,7 +239,7 @@ document.querySelector('.cart-items').addEventListener('click', (event) => {
 });
 document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => {
   document.querySelectorAll('.filter').forEach((filter) => { const active = filter === button; filter.classList.toggle('active', active); filter.setAttribute('aria-pressed', String(active)); });
-  activeFilter = button.dataset.filter; renderProducts();
+  activeFilter = button.dataset.filter; activeCategoryId = null; renderProducts();
 }));
 document.querySelector('#catalog-search').addEventListener('input', (event) => { searchTerm = event.target.value.trim().toLowerCase(); renderProducts(); });
 document.querySelector('.bag-button').addEventListener('click', openDrawer);
@@ -205,11 +253,17 @@ document.addEventListener('keydown', (event) => {
   }
 });
 document.querySelector('.checkout-button').addEventListener('click', () => { window.location.href = '/checkout.html'; });
-document.querySelectorAll('.category-card').forEach((card) => card.addEventListener('click', (event) => {
-  event.preventDefault(); activeFilter = card.dataset.category;
-  document.querySelectorAll('.filter').forEach((filter) => { const active = filter.dataset.filter === activeFilter; filter.classList.toggle('active', active); filter.setAttribute('aria-pressed', String(active)); }); renderProducts();
-  document.querySelector('#products').scrollIntoView({ behavior: 'smooth' });
-}));
+categoryTrack?.addEventListener('click', (event) => {
+  const card = event.target.closest('[data-category-id]');
+  if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);
+});
+carouselToggle?.addEventListener('click', () => {
+  const paused = categoryTrack.classList.toggle('is-paused');
+  carouselToggle.setAttribute('aria-pressed', String(paused));
+  carouselToggle.setAttribute('aria-label', paused ? 'Play category carousel' : 'Pause category carousel');
+  carouselToggle.querySelector('.material-symbols-outlined').textContent = paused ? 'play_arrow' : 'pause';
+  carouselToggle.querySelector('span:last-child').textContent = paused ? 'PLAY' : 'PAUSE';
+});
 document.querySelector('.menu-toggle').addEventListener('click', (event) => {
   const nav = document.querySelector('.main-nav'); const opened = nav.classList.toggle('open');
   event.currentTarget.setAttribute('aria-expanded', String(opened));

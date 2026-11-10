@@ -1,23 +1,107 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content="#080808" />
-    <title>Account · Hushley</title><link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" /><link rel="stylesheet" href="/src/styles/theme.css" /><link rel="stylesheet" href="/src/styles/storefront.css" /><link rel="stylesheet" href="/src/styles/pages.css" /><link rel="stylesheet" href="/src/styles/account-checkout.css" /><link rel="stylesheet" href="/src/styles/readability.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c0d10" />
+    <title>Account · Hushley Billiards</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles/theme.css" />
+    <link rel="stylesheet" href="/src/styles/storefront.css" />
+    <link rel="stylesheet" href="/src/styles/pages.css" />
+    <link rel="stylesheet" href="/src/styles/account-checkout.css" />
+    <link rel="stylesheet" href="/src/styles/readability.css" />
+    <link rel="stylesheet" href="/src/styles/account-portal.css" />
   </head>
-  <body class="subpage">
-    <header class="site-header"><a class="brand" href="/">HUSHLEY<span>BILLIARD ACCESSORIES</span></a><a class="back-link" href="/">← &nbsp; BACK TO SHOP</a></header>
-    <main class="account-wrap">
-      <section class="account-card" id="auth-card"><p class="eyebrow">HUSHLEY CUSTOMER ACCOUNT</p><h1 id="auth-title">SIGN IN</h1><p class="account-lead">Sign in to review your orders and keep your details ready for checkout.</p><p id="connection-state" class="connection-state" role="status" aria-live="polite" hidden></p>
+  <body class="subpage account-portal-page">
+    <header class="account-header">
+      <a class="account-brand" href="/" aria-label="Hushley Billiard Accessories home">
+        <img src="/images/hushley-logo.png" alt="Hushley Billiard Accessories Shop" />
+        <span>HUSHLEY <small>BILLIARD ACCESSORIES</small></span>
+      </a>
+      <div class="account-header-actions">
+        <span class="secure-badge"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> SECURE ACCOUNT ACCESS</span>
+        <a href="/">BACK TO SHOP</a>
+        <a href="mailto:hushleybilliards@gmail.com">CUSTOMER SUPPORT</a>
+      </div>
+    </header>
+
+    <main class="account-wrap account-portal-wrap">
+      <section class="account-card auth-card" id="auth-card">
+        <img class="auth-logo" src="/images/hushley-logo.png" alt="" />
+        <p class="eyebrow" id="auth-eyebrow">HUSHLEY CUSTOMER ACCOUNT</p>
+        <h1 id="auth-title">SIGN IN</h1>
+        <p class="account-lead" id="auth-lead">Access your Hushley Billiards Shop account.</p>
+        <p id="connection-state" class="connection-state" role="status" aria-live="polite" hidden></p>
         <div class="config-alert" hidden>Account services are not connected yet. You can enter your details, but sign-up and sign-in will only work after the shop connects this site to its Supabase project.</div>
-        <form id="auth-form" novalidate><label class="auth-field name-field" hidden>Full name<input name="full_name" autocomplete="name" minlength="2" /></label><label class="auth-field">Email address<input name="email" type="email" autocomplete="email" required /></label><label class="auth-field">Password<input name="password" type="password" autocomplete="current-password" minlength="8" required /></label><p class="form-status" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit">SIGN IN</button></form>
+
+        <form id="auth-form" novalidate>
+          <div class="signup-progress" id="signup-progress" hidden>
+            <span class="progress-step is-current" data-progress-step="1"><span>1</span> EMAIL</span>
+            <span class="progress-line" aria-hidden="true"></span>
+            <span class="progress-step" data-progress-step="2"><span>2</span> DETAILS</span>
+          </div>
+
+          <label class="auth-field" id="email-field">
+            <span id="email-label">EMAIL ADDRESS</span>
+            <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">mail</span><input name="email" type="email" autocomplete="email" placeholder="name@example.com" required /></span>
+          </label>
+          <button class="email-continue button button-primary" id="continue-signup" type="button" hidden>CONTINUE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+          <button class="change-email" id="change-signup-email" type="button" hidden>CHANGE EMAIL</button>
+
+          <div class="signup-details" id="signup-details" hidden>
+            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span> We’ll send an email confirmation to the address above.</p>
+            <label class="auth-field name-field">
+              <span>FULL NAME</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">person</span><input name="full_name" autocomplete="name" minlength="2" placeholder="Your full name" /></span>
+            </label>
+            <label class="auth-field phone-field">
+              <span>MOBILE NUMBER</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">call</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" pattern="[+]?[0-9() .-]{7,20}" placeholder="+63 9XX XXX XXXX" /></span>
+              <small>Use an international format, for example +63 9XX XXX XXXX.</small>
+            </label>
+            <label class="auth-field password-field">
+              <span>PASSWORD</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock</span><input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required /><button class="password-toggle" type="button" data-toggle-password="password" aria-label="Show password"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button></span>
+            </label>
+            <label class="auth-field confirm-password-field">
+              <span>CONFIRM PASSWORD</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock_reset</span><input name="confirm_password" type="password" autocomplete="new-password" minlength="8" placeholder="Re-enter your password" /><button class="password-toggle" type="button" data-toggle-password="confirm_password" aria-label="Show confirm password"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button></span>
+            </label>
+            <label class="terms-check"><input name="terms_accepted" type="checkbox" /><span>I agree to Hushley’s customer account terms and privacy notice.</span></label>
+            <p class="form-status signup-form-status" role="status" aria-live="polite"></p>
+            <button class="button button-primary auth-submit" type="submit">CREATE ACCOUNT <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+          </div>
+
+          <div class="signin-details" id="signin-details">
+            <label class="auth-field password-field">
+              <span>PASSWORD</span>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock</span><input name="signin_password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" type="button" data-toggle-password="signin_password" aria-label="Show password"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button></span>
+            </label>
+            <p class="form-status" role="status" aria-live="polite"></p>
+            <button class="button button-primary auth-submit" type="submit">SIGN IN <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+          </div>
+        </form>
         <button class="forgot-password" id="forgot-password" type="button">FORGOT PASSWORD?</button>
         <p class="auth-switch"><span id="switch-prompt">New to Hushley?</span> <button id="switch-mode" type="button">CREATE AN ACCOUNT</button></p>
       </section>
-      <section class="account-card signed-in-card" id="account-panel" hidden><p class="eyebrow">YOUR HUSHLEY ACCOUNT</p><h1>WELCOME BACK</h1><p id="account-email" class="account-lead"></p><p id="order-notice" class="form-status" role="status" aria-live="polite"></p><p id="account-connection" class="connection-state" role="status" aria-live="polite" hidden></p><div class="account-actions"><a class="button button-outline" href="/">CONTINUE SHOPPING</a><a class="button button-primary" href="/admin.html" id="admin-link" hidden>OPEN ADMIN DASHBOARD</a><button class="button button-outline signout-button" id="sign-out">SIGN OUT</button></div><div class="order-history"><div class="order-history-head"><h2>YOUR ORDERS</h2><button type="button" id="refresh-orders">REFRESH</button></div><div id="orders-list" aria-live="polite"><p class="empty-orders">Your orders will appear here.</p></div></div></section>
+
+      <section class="account-card signed-in-card" id="account-panel" hidden>
+        <img class="auth-logo" src="/images/hushley-logo.png" alt="" />
+        <p class="eyebrow">YOUR HUSHLEY ACCOUNT</p>
+        <h1>WELCOME BACK</h1>
+        <p id="account-email" class="account-lead"></p>
+        <p id="order-notice" class="form-status" role="status" aria-live="polite"></p>
+        <p id="account-connection" class="connection-state" role="status" aria-live="polite" hidden></p>
+        <div class="account-actions"><a class="button button-outline" href="/">CONTINUE SHOPPING</a><a class="button button-primary" href="/admin.html" id="admin-link" hidden>OPEN ADMIN DASHBOARD</a><button class="button button-outline signout-button" id="sign-out">SIGN OUT</button></div>
+        <div class="order-history"><div class="order-history-head"><h2>YOUR ORDERS</h2><button type="button" id="refresh-orders">REFRESH</button></div><div id="orders-list" aria-live="polite"><p class="empty-orders">Your orders will appear here.</p></div></div>
+      </section>
     </main>
-    <footer class="footer"><a class="brand" href="/">HUSHLEY<span>BILLIARD ACCESSORIES</span></a><p>PRECISION IN EVERY SHOT.</p><div class="footer-links"><a href="/">SHOP</a><a href="/#track">TRACK ORDER</a></div><small>© HUSHLEY BILLIARD ACCESSORIES SHOP</small></footer>
+
+    <footer class="account-footer"><span>© <span id="year"></span> HUSHLEY BILLIARD ACCESSORIES</span><div><a href="/">SHOP</a><a href="mailto:hushleybilliards@gmail.com">CUSTOMER SUPPORT</a></div></footer>
     <script type="module" src="/src/pages/account.js"></script>
   </body>
 </html>

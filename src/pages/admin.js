@@ -100,6 +100,7 @@ if (supabase?.auth) supabase.auth.onAuthStateChange((event, session) => {
 
 async function loadMetrics() {
   const started = Date.now();
+  const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(weekStart.getDate() - 6);
   const queries = await Promise.all([
     supabase.from('orders').select('id', { count: 'exact', head: true }),
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -107,17 +108,49 @@ async function loadMetrics() {
     supabase.from('products').select('stock_quantity,low_stock_threshold').eq('is_active', true),
     supabase.from('payments').select('amount').eq('status', 'approved'),
     supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'delivered'),
+    supabase.from('payments').select('amount,reviewed_at').eq('status', 'approved').gte('reviewed_at', weekStart.toISOString()),
   ]);
   const error = queries.find((item) => item.error)?.error;
   if (error) { say(failureMessage(error, 'Dashboard metrics'), 'error'); return; }
-  const [orders, payments, products, lowStock, sales, completed] = queries;
+  const [orders, payments, products, lowStock, sales, completed, salesWeek] = queries;
   $('#metric-sales').textContent = currency((sales.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0));
   $('#metric-orders').textContent = orders.count ?? '0';
   $('#metric-payments').textContent = payments.count ?? '0';
   $('#metric-completed').textContent = completed.count ?? '0';
   $('#metric-products').textContent = products.count ?? '0';
   $('#metric-low-stock').textContent = lowStock.data.filter((row) => row.stock_quantity <= row.low_stock_threshold).length;
+  renderSalesChart(salesWeek.data || []);
   if (Date.now() - started > 5000) say('Metrics loaded over a slow connection.', 'warning');
+}
+
+function renderSalesChart(payments) {
+  const host = $('#sales-chart');
+  const dataList = $('#sales-chart-data');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const points = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today); date.setDate(today.getDate() - (6 - index));
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const amount = payments.reduce((sum, payment) => {
+      const paidAt = new Date(payment.reviewed_at);
+      const paidKey = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}-${String(paidAt.getDate()).padStart(2, '0')}`;
+      return paidKey === key ? sum + Number(payment.amount || 0) : sum;
+    }, 0);
+    return { date, key, amount, label: date.toLocaleDateString('en-PH', { weekday: 'short' }) };
+  });
+  const max = Math.max(...points.map((point) => point.amount), 1);
+  const width = 760; const height = 250; const top = 18; const bottom = 205;
+  const barWidth = 46; const gap = (width - points.length * barWidth) / (points.length + 1);
+  const bars = points.map((point, index) => {
+    const barHeight = point.amount ? Math.max(5, (point.amount / max) * (bottom - top)) : 2;
+    const x = gap + index * (barWidth + gap); const y = bottom - barHeight;
+    const fullDate = point.date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+    const compactAmount = point.amount ? new Intl.NumberFormat('en-PH', { notation: 'compact', maximumFractionDigits: 1 }).format(point.amount) : '—';
+    return `<g><title>${escapeHtml(fullDate)}: ${escapeHtml(currency(point.amount))} approved</title><rect class="sales-chart-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth}" height="${barHeight.toFixed(1)}" rx="5"/><text class="sales-chart-value" x="${(x + barWidth / 2).toFixed(1)}" y="${Math.max(12, y - 7).toFixed(1)}" text-anchor="middle">${compactAmount}</text><text class="sales-chart-day" x="${(x + barWidth / 2).toFixed(1)}" y="230" text-anchor="middle">${point.label}</text></g>`;
+  }).join('');
+  const total = points.reduce((sum, point) => sum + point.amount, 0);
+  host.setAttribute('aria-label', `Approved payments for the last seven days total ${currency(total)}. ${points.map((point) => `${point.label}: ${currency(point.amount)}`).join('; ')}.`);
+  host.innerHTML = `<svg class="sales-chart-svg" viewBox="0 0 ${width} ${height}" role="presentation" aria-hidden="true"><defs><linearGradient id="sales-bar-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4edea3"/><stop offset="1" stop-color="#10b981" stop-opacity=".48"/></linearGradient></defs><line class="sales-chart-axis" x1="0" y1="${bottom}" x2="${width}" y2="${bottom}"/>${bars}</svg>`;
+  dataList.innerHTML = points.map((point) => `<li><span>${escapeHtml(point.date.toLocaleDateString('en-PH', { weekday: 'long', month: 'short', day: 'numeric' }))}</span><strong>${escapeHtml(currency(point.amount))}</strong></li>`).join('');
 }
 
 async function loadOrders() {
@@ -195,7 +228,12 @@ async function loadInventory() {
 $('#admin-sign-out').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/account.html'; });
 $('#reload-orders').addEventListener('click', loadOrders);
 $('#order-search').addEventListener('input', renderOrders);
-$('#toggle-product-form').addEventListener('click', () => { $('#product-form').hidden = !$('#product-form').hidden; });
+const productDialog = $('#product-dialog');
+$('#toggle-product-form').addEventListener('click', () => {
+  if (!productDialog.open) { productDialog.showModal(); $('#product-form [name="name"]').focus(); }
+});
+document.querySelectorAll('[data-close-product-dialog]').forEach((button) => button.addEventListener('click', () => productDialog.close()));
+productDialog.addEventListener('click', (event) => { if (event.target === productDialog) productDialog.close(); });
 $('#toggle-category-form').addEventListener('click', () => { $('#category-form').hidden = !$('#category-form').hidden; });
 document.addEventListener('click', async (event) => {
   const retry = event.target.closest('[data-retry]');
@@ -229,7 +267,7 @@ $('#product-form').addEventListener('submit', async (event) => {
     const { data: product, error } = await supabase.from('products').insert({ category_id: values.get('category_id'), slug, name, description, sku: String(values.get('sku') || '').trim() || null, price, stock_quantity: 0, image_urls: [imageUrl], is_active: values.get('is_active') === 'on', ...productConfig }).select('id').single();
     if (error) throw error;
     if (stock > 0) { const { error: stockError } = await supabase.rpc('admin_set_product_stock', { p_product_id: product.id, p_quantity: stock, p_note: 'Opening stock' }); if (stockError) throw stockError; }
-    form.reset(); form.hidden = true; say('Product saved.', 'success'); await Promise.all([loadProducts(), loadMetrics(), loadInventory()]);
+    form.reset(); productDialog.close(); say('Product saved.', 'success'); await Promise.all([loadProducts(), loadMetrics(), loadInventory()]);
   } catch (error) { status.textContent = failureMessage(error, 'Product save'); }
   finally { button.disabled = false; }
 });

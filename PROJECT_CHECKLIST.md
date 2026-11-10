@@ -6,10 +6,10 @@ Last reviewed: 11 November 2026 (Asia/Manila)
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Storefront and admin UI | In progress | Admin product create/edit supports images, descriptions, SKU, options, specifications, pricing, stock, and publish state. Storefront displays only active, complete products from Supabase. Readability stylesheet uses a conventional system font. Production build passes; authenticated UI flow remains to verify. |
+| Storefront and account UI | In progress | The large storefront hero was replaced with an infinitely looping category carousel, and account sign-up now uses the Stitch-inspired email-first form with phone contact details. Production build passes; browser and authenticated flow checks remain. |
 | Supabase production schema | Complete | Four local migrations applied; remote history matches local. Core tables, RPC signature, private proof bucket, and verified-owner admin trigger verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Complete | Latest account form update is published to the existing public repository on `main` at `b2ff301`; `.env`, `dist/`, and `node_modules/` are excluded. |
+| GitHub source | Complete through `b2ff301` | This UI update is currently local and has not been published. `.env`, `dist/`, and `node_modules/` remain excluded. |
 | Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
@@ -53,6 +53,11 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 
 ## 4. Storefront, account, and checkout
 
+- [x] Replace the oversized storefront hero copy with an infinite category carousel using active categories and available product imagery; category selection filters the matching catalog.
+- [x] Restyle sign-in and sign-up around the supplied Stitch account references and Hushley logo.
+- [x] Make sign-up email-first, then collect full name, mobile contact, and password confirmation; use Supabase Auth rate limits and display a friendly retry message for throttled requests.
+- [ ] Review whether the customer terms/privacy notice needs approved content and destination links before launch.
+- [ ] Visually inspect the storefront carousel and account layouts at desktop and mobile sizes.
 - [ ] Configure `.env` locally using only Supabase URL and publishable key.
 - [ ] Test product listing, search/filter behavior, cart persistence, and empty/error/offline states.
 - [ ] Test sign-up, email confirmation, sign-in, sign-out, and password recovery.

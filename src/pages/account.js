@@ -1,17 +1,28 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
 const form = document.querySelector('#auth-form');
-const status = document.querySelector('.form-status');
 const authCard = document.querySelector('#auth-card');
 const accountPanel = document.querySelector('#account-panel');
-const nameField = document.querySelector('.name-field');
 let mode = new URLSearchParams(location.search).get('recovery') === '1' ? 'recovery' : 'signin';
+let signupStage = 1;
 let currentUser = null;
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 
-function say(message, kind = '') {
+function say(message, kind = '', target = mode === 'signup' ? '.signup-form-status' : '.signin-details .form-status') {
+  const status = document.querySelector(target);
+  if (!status) return;
   status.textContent = message;
   status.dataset.kind = kind;
+}
+function authErrorMessage(error) {
+  const detail = error?.message || 'We could not complete that request.';
+  if (error?.status === 429 || /rate limit|too many requests/i.test(detail)) return 'Too many attempts in a short time. Please wait a little, then try again.';
+  if (/invalid login credentials/i.test(detail)) return 'Email or password is incorrect. Check your details and try again.';
+  if (/email not confirmed/i.test(detail)) return 'Please confirm your email using the link we sent before signing in.';
+  if (/password.*(weak|short|length)/i.test(detail)) return 'Choose a stronger password with at least 8 characters.';
+  if (/permission|row-level|not authorized/i.test(detail)) return 'Access was denied for this action. Sign in again or contact the shop if it continues.';
+  if (/expired|jwt/i.test(detail)) return 'Your session expired. Sign in again and retry.';
+  return detail;
 }
 const orderNotice = document.querySelector('#order-notice');
 const connection = document.querySelector('#connection-state');
@@ -29,16 +40,48 @@ networkState();
 function updateMode() {
   const signup = mode === 'signup';
   const recovery = mode === 'recovery';
+  const email = form.elements.email;
+  const emailField = document.querySelector('#email-field');
+  const signupDetails = document.querySelector('#signup-details');
+  const signinDetails = document.querySelector('#signin-details');
+  const progress = document.querySelector('#signup-progress');
+  const continueButton = document.querySelector('#continue-signup');
+  const changeEmail = document.querySelector('#change-signup-email');
+  const signupFields = ['full_name', 'phone', 'password', 'confirm_password'];
+  const signupReady = signup && signupStage === 2;
   document.querySelector('#auth-title').textContent = recovery ? 'RESET PASSWORD' : signup ? 'CREATE ACCOUNT' : 'SIGN IN';
-  document.querySelector('.auth-submit').textContent = recovery ? 'UPDATE PASSWORD' : signup ? 'CREATE ACCOUNT' : 'SIGN IN';
+  document.querySelector('#auth-lead').textContent = recovery ? 'Choose a new password for your account.' : signup ? 'Create your Hushley Billiards Shop account.' : 'Access your Hushley Billiards Shop account.';
   document.querySelector('#switch-prompt').textContent = signup ? 'Already have an account?' : 'New to Hushley?';
   document.querySelector('#switch-mode').textContent = signup ? 'SIGN IN' : 'CREATE AN ACCOUNT';
-  nameField.hidden = !signup;
-  nameField.querySelector('input').required = signup;
+  progress.hidden = !signup;
+  signupDetails.hidden = !signupReady;
+  signinDetails.hidden = signup;
+  emailField.hidden = recovery;
+  email.readOnly = signupReady;
+  email.required = !recovery;
+  continueButton.hidden = !signup || signupReady;
+  changeEmail.hidden = !signupReady;
+  document.querySelector('[data-progress-step="1"]').classList.toggle('is-complete', signupReady);
+  document.querySelector('[data-progress-step="1"]').classList.toggle('is-current', !signupReady);
+  document.querySelector('[data-progress-step="2"]').classList.toggle('is-current', signupReady);
+  signupFields.forEach((name) => { const field = form.elements[name]; field.required = signupReady && ['full_name', 'phone', 'password', 'confirm_password'].includes(name); });
+  form.elements.terms_accepted.required = signupReady;
+  form.elements.signin_password.required = !signup;
+  form.elements.password.required = signupReady;
+  form.elements.password.autocomplete = recovery ? 'new-password' : 'new-password';
+  form.elements.email.autocomplete = 'email';
+  signupDetails.querySelector('.auth-submit').textContent = 'CREATE ACCOUNT →';
+  signinDetails.querySelector('.auth-submit').textContent = recovery ? 'UPDATE PASSWORD' : 'SIGN IN →';
+  signinDetails.querySelector('.auth-field > span:first-child').textContent = recovery ? 'NEW PASSWORD' : 'PASSWORD';
+  form.elements.signin_password.autocomplete = recovery ? 'new-password' : 'current-password';
+  form.elements.signin_password.minLength = recovery ? 8 : 0;
+  form.elements.signin_password.placeholder = recovery ? 'At least 8 characters' : 'Enter your password';
   document.querySelector('.auth-switch').hidden = recovery;
   document.querySelector('#forgot-password').hidden = signup || recovery;
-  form.querySelector('[name="password"]').autocomplete = signup || recovery ? 'new-password' : 'current-password';
-  form.querySelector('[name="password"]').placeholder = recovery ? 'Enter a new password' : '';
+  document.querySelector('#forgot-password').textContent = 'FORGOT PASSWORD?';
+  form.elements.password.placeholder = 'At least 8 characters';
+  document.querySelector('.confirm-password-field').hidden = !signup;
+  document.querySelector('.phone-field').hidden = !signup;
 }
 async function showAccount(user) {
   currentUser = user;
@@ -72,15 +115,43 @@ async function loadOrders() {
 
 document.querySelector('#switch-mode').addEventListener('click', () => {
   mode = mode === 'signin' ? 'signup' : 'signin';
+  signupStage = 1;
   say('');
   updateMode();
 });
+document.querySelector('#continue-signup').addEventListener('click', () => {
+  const email = form.elements.email;
+  email.setCustomValidity('');
+  if (!email.value.trim() || !email.checkValidity()) {
+    email.setCustomValidity('Enter a valid email address.');
+    email.reportValidity();
+    email.focus();
+    return;
+  }
+  email.value = email.value.trim().toLowerCase();
+  signupStage = 2;
+  updateMode();
+  form.elements.full_name.focus();
+});
+form.elements.email.addEventListener('input', () => form.elements.email.setCustomValidity(''));
+document.querySelector('#change-signup-email').addEventListener('click', () => {
+  signupStage = 1;
+  updateMode();
+  form.elements.email.focus();
+});
+document.querySelectorAll('[data-toggle-password]').forEach((button) => button.addEventListener('click', () => {
+  const input = form.elements[button.dataset.togglePassword];
+  const showing = input.type === 'password';
+  input.type = showing ? 'text' : 'password';
+  button.setAttribute('aria-label', `${showing ? 'Hide' : 'Show'} ${button.dataset.togglePassword.replaceAll('_', ' ')}`);
+  button.querySelector('.material-symbols-outlined').textContent = showing ? 'visibility_off' : 'visibility';
+}));
 document.querySelector('#forgot-password').addEventListener('click', async () => {
   if (!isSupabaseConfigured) return say('Connect the client-owned Supabase project before using password recovery.', 'error');
   const email = form.elements.email.value.trim().toLowerCase();
   if (!email) return say('Enter your email address first.', 'error');
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/account.html?recovery=1` });
-  say(error ? error.message : 'If an account exists for that email, password reset instructions are on the way.', error ? 'error' : 'success');
+  say(error ? authErrorMessage(error) : 'If an account exists for that email, password reset instructions are on the way.', error ? 'error' : 'success');
 });
 document.querySelector('#refresh-orders').addEventListener('click', loadOrders);
 document.querySelector('#orders-list').addEventListener('submit', async (event) => {
@@ -117,19 +188,27 @@ document.querySelector('#sign-out').addEventListener('click', async () => {
 });
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  for (const field of form.querySelectorAll('input[required]')) {
+  if (mode === 'signup' && signupStage === 1) return document.querySelector('#continue-signup').click();
+  const activeDetails = mode === 'signup' ? document.querySelector('#signup-details') : document.querySelector('#signin-details');
+  for (const field of activeDetails.querySelectorAll('input[required]')) {
     field.setCustomValidity('');
     if (!field.checkValidity()) { field.reportValidity(); field.focus(); return say('Check the highlighted details and try again.', 'error'); }
+  }
+  if (mode === 'signup' && form.elements.password.value !== form.elements.confirm_password.value) {
+    form.elements.confirm_password.setCustomValidity('Passwords do not match.');
+    form.elements.confirm_password.reportValidity();
+    form.elements.confirm_password.focus();
+    return say('Make sure both password fields match.', 'error');
   }
   if (!isSupabaseConfigured) return say('Connect the client-owned Supabase project before using account features.', 'error');
   const values = new FormData(form);
   const email = String(values.get('email')).trim().toLowerCase();
-  const password = String(values.get('password'));
-  const button = document.querySelector('.auth-submit');
+  const password = String(mode === 'signup' ? values.get('password') : values.get('signin_password'));
+  const button = mode === 'signup' ? document.querySelector('#signup-details .auth-submit') : document.querySelector('#signin-details .auth-submit');
   button.disabled = true;
   button.dataset.label = button.textContent;
   button.textContent = 'PLEASE WAIT…';
-  say(mode === 'signup' ? 'Creating your account…' : 'Signing in…');
+  say(mode === 'signup' ? 'Creating your account…' : mode === 'recovery' ? 'Updating your password…' : 'Signing in…');
   const pendingMessage = mode === 'signup' ? 'Creating your account…' : mode === 'recovery' ? 'Updating your password…' : 'Signing in…';
   const slowTimer = setTimeout(() => say(`${pendingMessage} This is taking longer than usual. Please keep this page open.`, ''), 7000);
   try {
@@ -138,10 +217,12 @@ form.addEventListener('submit', async (event) => {
       if (error) throw error;
       mode = 'signin';
       await showAccount(data.user);
-      say('Password updated.', 'success');
+      orderNotice.textContent = 'Password updated successfully.';
+      orderNotice.dataset.kind = 'success';
     } else if (mode === 'signup') {
       const fullName = String(values.get('full_name')).trim();
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+      const phone = String(values.get('phone')).trim();
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName, phone } } });
       if (error) throw error;
       if (data.session) await showAccount(data.user);
       else say('Account created. Check your email to confirm it, then sign in.', 'success');
@@ -151,8 +232,7 @@ form.addEventListener('submit', async (event) => {
       await showAccount(data.user);
     }
   } catch (error) {
-    const detail = error.message || 'We could not complete that request.';
-    say(/permission|row-level|not authorized/i.test(detail) ? 'Access was denied for this action. Sign in again or contact the shop if it continues.' : /expired|jwt/i.test(detail) ? 'Your session expired. Sign in again and retry.' : detail, 'error');
+    say(authErrorMessage(error), 'error');
   } finally {
     clearTimeout(slowTimer);
     button.disabled = false;
