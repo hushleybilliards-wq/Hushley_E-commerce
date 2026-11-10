@@ -5,13 +5,15 @@ const authCard = document.querySelector('#auth-card');
 const accountPanel = document.querySelector('#account-panel');
 let mode = new URLSearchParams(location.search).get('recovery') === '1' ? 'recovery' : 'signin';
 let signupStage = 1;
+let recoveryStage = 1;
+let recoveryEmail = '';
 let currentUser = null;
 let pendingSignup = null;
 let resendTimer = null;
 let resendRemaining = 0;
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 
-function say(message, kind = '', target = mode === 'signup' ? (signupStage === 3 ? '.otp-form-status' : '.signup-form-status') : '.signin-details .form-status') {
+function say(message, kind = '', target = mode === 'signup' ? (signupStage === 3 ? '.otp-form-status' : '.signup-form-status') : mode === 'recovery' && recoveryStage === 2 ? '.otp-form-status' : '.signin-details .form-status') {
   const status = document.querySelector(target);
   if (!status) return;
   status.textContent = message;
@@ -52,6 +54,8 @@ function normalizedPhone(value) {
 function updateMode() {
   const signup = mode === 'signup';
   const recovery = mode === 'recovery';
+  const recoveryOtp = recovery && recoveryStage === 2;
+  const recoveryPassword = recovery && recoveryStage === 3;
   const channel = selectedChannel();
   const identifier = form.elements.identifier;
   const emailField = document.querySelector('#email-field');
@@ -65,17 +69,17 @@ function updateMode() {
   const signupDetailsVisible = signup && signupStage === 2;
   const otpVisible = signup && signupStage === 3;
   document.querySelector('#auth-title').textContent = recovery ? 'RESET PASSWORD' : otpVisible ? 'VERIFY YOUR CONTACT' : signup ? 'CREATE ACCOUNT' : 'SIGN IN';
-  document.querySelector('#auth-lead').textContent = recovery ? 'Choose a new password for your account.' : otpVisible ? 'Enter the one-time code to finish creating your account.' : signup ? 'Create your Hushley Billiards Shop account.' : 'Access your Hushley Billiards Shop account.';
+  document.querySelector('#auth-lead').textContent = recovery ? (recoveryStage === 1 ? 'Enter your email and we’ll send a one-time reset code.' : recoveryOtp ? 'Enter the code from your email to continue.' : 'Choose a new password for your account.') : otpVisible ? 'Enter the one-time code to finish creating your account.' : signup ? 'Create your Hushley Billiards Shop account.' : 'Access your Hushley Billiards Shop account.';
   document.querySelector('#switch-prompt').textContent = signup ? 'Already have an account?' : 'New to Hushley?';
   document.querySelector('#switch-mode').textContent = signup ? 'SIGN IN' : 'CREATE AN ACCOUNT';
   progress.hidden = !signup;
   methodPicker.hidden = !signup || signupStage !== 1;
   signupDetails.hidden = !signupDetailsVisible;
-  otpDetails.hidden = !otpVisible;
-  signinDetails.hidden = signup;
-  emailField.hidden = recovery || otpVisible;
+  otpDetails.hidden = !(otpVisible || recoveryOtp);
+  signinDetails.hidden = signup || (recovery && !recoveryPassword);
+  emailField.hidden = recovery ? recoveryStage !== 1 : otpVisible;
   identifier.readOnly = signup && signupStage !== 1;
-  identifier.required = !recovery && !otpVisible;
+  identifier.required = recovery ? recoveryStage === 1 : !otpVisible;
   continueButton.hidden = !signup || signupStage !== 1;
   changeEmail.hidden = !signup || signupStage !== 2;
   const progressLabels = [['VERIFY CONTACT', signupStage === 1], ['DETAILS', signupStage === 2], ['CODE', signupStage === 3]];
@@ -91,8 +95,9 @@ function updateMode() {
   form.elements.password.required = signupDetailsVisible;
   form.elements.confirm_password.required = signupDetailsVisible;
   form.elements.terms_accepted.required = signupDetailsVisible;
-  form.elements.otp_code.required = otpVisible;
-  form.elements.signin_password.required = !signup;
+  form.elements.otp_code.required = otpVisible || recoveryOtp;
+  form.elements.recovery_password.required = recoveryOtp;
+  form.elements.signin_password.required = !signup && (!recovery || recoveryPassword);
   identifier.autocomplete = recovery ? 'email' : 'username';
   const initialStep = signup && signupStage === 1;
   const emailChannel = channel === 'email';
@@ -109,11 +114,15 @@ function updateMode() {
   signinDetails.querySelector('.auth-submit').textContent = recovery ? 'UPDATE PASSWORD' : 'SIGN IN →';
   signinDetails.querySelector('.auth-field > span:first-child').textContent = recovery ? 'NEW PASSWORD' : 'PASSWORD';
   form.elements.signin_password.autocomplete = recovery ? 'new-password' : 'current-password';
-  form.elements.signin_password.minLength = recovery ? 8 : 0;
+  form.elements.signin_password.minLength = recoveryPassword ? 8 : 0;
   form.elements.signin_password.placeholder = recovery ? 'At least 8 characters' : 'Enter your password';
   document.querySelector('.auth-switch').hidden = recovery;
-  document.querySelector('#forgot-password').hidden = signup || recovery;
-  document.querySelector('#forgot-password').textContent = 'FORGOT PASSWORD?';
+  document.querySelector('#forgot-password').hidden = signup || (recovery && recoveryStage !== 1);
+  document.querySelector('#forgot-password').textContent = recovery ? 'SEND RESET CODE' : 'FORGOT PASSWORD?';
+  document.querySelector('#recovery-password-confirm-field').hidden = !recoveryOtp;
+  document.querySelector('#verify-signup-code').textContent = recoveryOtp ? 'VERIFY RESET CODE' : 'VERIFY CODE';
+  if (recoveryOtp) document.querySelector('#otp-destination').textContent = `Enter the password reset code sent to ${recoveryEmail}.`;
+  if (recovery) document.querySelector('#email-label').textContent = 'EMAIL ADDRESS';
   form.elements.password.placeholder = 'At least 8 characters';
   document.querySelector('.confirm-password-field').hidden = !signup;
   document.querySelector('.phone-field').hidden = !signup || channel === 'phone';
@@ -212,7 +221,14 @@ document.querySelector('#forgot-password').addEventListener('click', async () =>
   if (!identifier || !identifier.includes('@')) return say('Password recovery uses your account email. Enter an email address; phone-only accounts need a linked email to reset here.', 'error');
   const email = identifier.toLowerCase();
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/account.html?recovery=1` });
-  say(error ? authErrorMessage(error) : 'If an account exists for that email, password reset instructions are on the way.', error ? 'error' : 'success');
+  if (error) return say(authErrorMessage(error), 'error');
+  recoveryEmail = email;
+  recoveryStage = 2;
+  mode = 'recovery';
+  updateMode();
+  startResendCooldown();
+  form.elements.otp_code.focus();
+  say('If an account exists for that email, a password reset code is on the way.', 'success');
 });
 document.querySelector('#refresh-orders').addEventListener('click', loadOrders);
 document.querySelector('#orders-list').addEventListener('submit', async (event) => {
@@ -265,15 +281,21 @@ function startResendCooldown(seconds = 60) {
 }
 document.querySelector('#resend-signup-code').addEventListener('click', async (event) => {
   const button = event.currentTarget;
-  if (!pendingSignup || button.disabled || !isSupabaseConfigured) return;
+  if ((!pendingSignup && !(mode === 'recovery' && recoveryStage === 2 && recoveryEmail)) || button.disabled || !isSupabaseConfigured) return;
   button.disabled = true;
   button.textContent = 'SENDING…';
   try {
-    const response = pendingSignup.channel === 'email'
-      ? await supabase.auth.resend({ type: 'signup', email: pendingSignup.email })
-      : await supabase.auth.resend({ type: 'sms', phone: pendingSignup.phone });
-    if (response.error) throw response.error;
-    say(`A new verification code was sent to ${pendingSignup.destination}.`, 'success');
+      if (mode === 'recovery') {
+        const response = await supabase.auth.resetPasswordForEmail(recoveryEmail, { redirectTo: `${location.origin}/account.html?recovery=1` });
+        if (response.error) throw response.error;
+        say('If an account exists for that email, a new password reset code is on the way.', 'success');
+      } else {
+        const response = pendingSignup.channel === 'email'
+          ? await supabase.auth.resend({ type: 'signup', email: pendingSignup.email })
+          : await supabase.auth.resend({ type: 'sms', phone: pendingSignup.phone });
+        if (response.error) throw response.error;
+        say(`A new verification code was sent to ${pendingSignup.destination}.`, 'success');
+      }
     startResendCooldown();
   } catch (error) {
     say(authErrorMessage(error), 'error');
@@ -315,20 +337,32 @@ form.addEventListener('submit', async (event) => {
   const identifier = String(values.get('identifier') || '').trim();
   const channel = selectedChannel();
   const password = String(mode === 'signup' && signupStage === 2 ? values.get('password') : values.get('signin_password'));
-  const button = mode === 'signup'
+  const button = mode === 'recovery' && recoveryStage === 2
+    ? document.querySelector('#verify-signup-code')
+    : mode === 'signup'
     ? document.querySelector(signupStage === 3 ? '#verify-signup-code' : '#signup-details .auth-submit')
     : document.querySelector('#signin-details .auth-submit');
   button.disabled = true;
   button.dataset.label = button.textContent;
   button.textContent = 'PLEASE WAIT…';
-  const pendingMessage = mode === 'signup' ? (signupStage === 2 ? 'Creating your account and sending a verification code…' : 'Verifying your code…') : mode === 'recovery' ? 'Updating your password…' : 'Signing in…';
+  const pendingMessage = mode === 'signup' ? (signupStage === 2 ? 'Creating your account and sending a verification code…' : 'Verifying your code…') : mode === 'recovery' ? (recoveryStage === 2 ? 'Verifying reset code…' : 'Updating your password…') : 'Signing in…';
   say(pendingMessage);
   const slowTimer = setTimeout(() => say(`${pendingMessage} This is taking longer than usual. Please keep this page open.`, ''), 7000);
   try {
-    if (mode === 'recovery') {
+    if (mode === 'recovery' && recoveryStage === 2) {
+      const token = String(values.get('otp_code') || '').replace(/\s+/g, '');
+      const { data, error } = await supabase.auth.verifyOtp({ email: recoveryEmail, token, type: 'recovery' });
+      if (error) throw error;
+      if (!data?.session) throw new Error('The reset code was accepted without creating a recovery session. Request a new code and try again.');
+      recoveryStage = 3;
+      updateMode();
+      form.elements.signin_password.focus();
+      say('Code verified. Enter your new password.', 'success');
+    } else if (mode === 'recovery' && recoveryStage === 3) {
       const { data, error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       mode = 'signin';
+      recoveryStage = 1;
       await showAccount(data.user);
       orderNotice.textContent = 'Password updated successfully.';
       orderNotice.dataset.kind = 'success';

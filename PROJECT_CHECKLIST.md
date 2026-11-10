@@ -6,7 +6,7 @@ Last reviewed: 11 November 2026 (Asia/Manila)
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Storefront, account, and admin UI | In progress | Compact product cards, regular-weight system typography, hover-pausing category loop, and staged email/SMS OTP signup are implemented locally. Admin modal and approved-payment chart remain. Build and deployed UI verification are pending for this latest update. |
+| Storefront, account, and admin UI | In progress | Compact product cards, regular-weight system typography, hover-pausing category loop, staged email/SMS signup OTP, and email-OTP password recovery are implemented. Production build passes. Admin modal and approved-payment chart remain. |
 | Supabase production schema | Complete | Four local migrations applied; remote history matches local. Core tables, RPC signature, private proof bucket, and verified-owner admin trigger verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
 | GitHub source | Published through `de4c8b0` | Latest account/storefront updates are currently local and not yet pushed. `.env`, `dist/`, and `node_modules/` remain excluded. |
@@ -58,8 +58,9 @@ The detailed database rollout and verification commands are in [supabase/DATABAS
 - [x] Remove bold typography weights and normalize the storefront/admin font system.
 - [x] Restyle sign-in and sign-up around the supplied Stitch account references and Hushley logo.
 - [x] Offer email OTP or SMS OTP at signup, collect required order contacts, and require Supabase `verifyOtp` success before showing the signed-in account.
+- [x] Use email OTP for password recovery before accepting a new password.
 - [ ] Configure production Auth confirmation switches, OTP email/SMS templates, production SMTP, SMS provider credentials, rate limits, and CAPTCHA in the client-owned Supabase project.
-- [ ] Verify email OTP and SMS OTP with owner-controlled test addresses/numbers after Auth settings are configured.
+- [ ] Verify signup OTP, recovery OTP, and SMS OTP with owner-controlled addresses/numbers after Auth settings are configured.
 - [ ] Review whether the customer terms/privacy notice needs approved content and destination links before launch.
 - [ ] Visually inspect the storefront carousel and account layouts at desktop and mobile sizes.
 - [ ] Configure `.env` locally using only Supabase URL and publishable key.

@@ -43,6 +43,7 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 ## Confirmed customer account verification
 
 - Signup offers verification through either email OTP or SMS OTP. Customers choose one as their verified Supabase Auth identity and then set a password; do not show the account as signed in until `verifyOtp` succeeds.
+- Password recovery uses an email OTP: request it with `resetPasswordForEmail`, verify with `verifyOtp({ email, token, type: 'recovery' })`, then allow the user to set a new password. Configure the hosted **Reset Password** email template with `{{ .Token }}`.
 - Collect the mobile number as a contact for email-primary signups. For phone-primary signups, collect an email for order contact but treat it as unverified metadata; checkout still collects the customer email for each order.
 - Normalize Philippine mobile numbers to E.164 before calling Supabase Auth. Accept an international number only when it is valid for the Auth provider.
 - Sign-in accepts the verified email or phone identity with its password. Password recovery supports email identities; phone-only customers need a linked email or support process until phone recovery is separately configured.

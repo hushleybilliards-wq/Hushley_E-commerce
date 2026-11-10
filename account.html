@@ -91,6 +91,7 @@
           <div class="signup-otp" id="signup-otp" hidden>
             <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span><span id="otp-destination">Enter the code we sent.</span></p>
             <label class="auth-field"><span>ONE-TIME CODE</span><span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">password</span><input name="otp_code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="Enter your code" /></span></label>
+            <label class="auth-field" id="recovery-password-confirm-field" hidden><span>NEW PASSWORD</span><span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock</span><input name="recovery_password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" /></span></label>
             <p class="form-status otp-form-status" role="status" aria-live="polite"></p>
             <button class="button button-primary auth-submit" id="verify-signup-code" type="submit">VERIFY CODE</button>
             <div class="otp-actions"><button type="button" id="resend-signup-code" disabled>RESEND CODE IN 60s</button><button type="button" id="change-signup-contact">CHANGE CONTACT</button></div>
