@@ -239,7 +239,7 @@ $('#orders-body').addEventListener('change', async (event) => {
   const { error } = await supabase.from('orders').update({ status: event.target.value }).eq('id', orderId);
   if (error) { say(failureMessage(error, 'Order status update'), 'error'); await loadOrders(); } else say('Order status updated.', 'success');
 });
-$('#orders-body').addEventListener('click', async (event) => {
+document.addEventListener('click', async (event) => {
   const review = event.target.closest('[data-review]');
   if (review) {
     review.disabled = true; review.textContent = 'REVIEWING…'; say('Checking payment proof review…');
@@ -296,8 +296,9 @@ $('#orders-body').addEventListener('click', async (event) => {
     try {
       let imageUrls = existingProduct?.image_urls || [];
       if (replacementImage) imageUrls = [await uploadProductImage(replacementImage), ...imageUrls.slice(1)];
-      const { error } = await supabase.from('products').update({ name, slug: safeSlug(name), sku: sku || null, description, category_id: categoryId, price, image_urls: imageUrls, is_active: isActive, ...productConfig }).eq('id', id);
+      const { data: updatedProduct, error } = await supabase.from('products').update({ name, slug: safeSlug(name), sku: sku || null, description, category_id: categoryId, price, image_urls: imageUrls, is_active: isActive, ...productConfig }).eq('id', id).select('id').maybeSingle();
       if (error) throw error;
+      if (!updatedProduct) throw new Error('No product was updated. Refresh your admin session and try again.');
       productsCache = productsCache.map((product) => product.id === id ? { ...product, name, slug: safeSlug(name), sku: sku || null, description, category_id: categoryId, price, image_urls: imageUrls, is_active: isActive, ...productConfig } : product);
       setRowStatus(isActive ? 'Saved and published.' : 'Saved as draft.', 'success');
       await loadMetrics();
