@@ -6,11 +6,11 @@ Last reviewed: 11 November 2026 (Asia/Manila)
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Storefront and account UI | In progress | The large storefront hero was replaced with an infinitely looping category carousel, and account sign-up now uses the Stitch-inspired email-first form with phone contact details. Production build passes; browser and authenticated flow checks remain. |
+| Storefront, account, and admin UI | In progress | System font styling, hidden storefront SKU, category carousel, email-first signup, add-product modal, and approved-payment chart are in the production build. UI build passes; authenticated admin and commerce flow checks remain. |
 | Supabase production schema | Complete | Four local migrations applied; remote history matches local. Core tables, RPC signature, private proof bucket, and verified-owner admin trigger verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Complete through `b2ff301` | This UI update is currently local and has not been published. `.env`, `dist/`, and `node_modules/` remain excluded. |
-| Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
+| GitHub source | Published through `d65168d` | UI changes pushed to `main` in the existing repository. `.env`, `dist/`, and `node_modules/` remain excluded. |
+| Vercel deployment | Live at [hushley-billiards.vercel.app](https://hushley-billiards.vercel.app) | The public site returns HTTP 200; deployed storefront/admin asset names match the local production build. The connected Vercel account still cannot list/manage the Hushley project. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
 ## 1. Source control and deployment
@@ -18,10 +18,10 @@ Last reviewed: 11 November 2026 (Asia/Manila)
 - [x] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git` (`main`).
 - [x] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
 - [x] Publish the reviewed project to the existing public GitHub repository; latest published commit is `b2ff301` on `main`.
-- [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible.
+- [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible; the current public deployment is updating from GitHub, but is not manageable in the connected Vercel account.
 - [ ] Configure Vercel production environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a Supabase secret/service-role key in a `VITE_*` variable.
-- [ ] Deploy a preview and verify storefront, account, checkout, and admin routes.
-- [ ] Deploy production and record the live URL and deployment commit.
+- [x] Verify storefront and admin routes on the public deployment; asset filenames match the local production build for `d65168d`.
+- [x] Verify production URL: `https://hushley-billiards.vercel.app` (deployment record itself is inaccessible through the connected Vercel account).
 
 ## 2. Supabase production database
 
