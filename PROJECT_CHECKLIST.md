@@ -1,6 +1,6 @@
 # Hushley Ecommerce Project Checklist
 
-Last reviewed: 9 November 2026 (Asia/Manila)
+Last reviewed: 10 November 2026 (Asia/Manila)
 
 ## Status at a glance
 
@@ -9,7 +9,7 @@ Last reviewed: 9 November 2026 (Asia/Manila)
 | Storefront and admin UI | In progress | Admin product create/edit supports images, descriptions, SKU, options, specifications, pricing, stock, and publish state. Storefront displays only active, complete products from Supabase. Readability stylesheet uses a conventional system font. Production build passes; authenticated UI flow remains to verify. |
 | Supabase production schema | Complete | Three local migrations applied; remote history matches local. Core tables, RPC signature, and private proof bucket verified. |
 | Supabase security review | Review before launch | Advisor warnings include authenticated `SECURITY DEFINER` RPCs (intentional trusted RPC pattern with internal auth checks) and overlapping read policies (performance/maintainability). Review/test role checks before launch. |
-| GitHub source | Complete | Reviewed project is published to the existing public repository on `main`. Remote head verified at `77640ca`; `.env`, `dist/`, and `node_modules/` are excluded. |
+| GitHub source | Complete | Latest storefront/admin update is published to the existing public repository on `main` at `d648147`; `.env`, `dist/`, and `node_modules/` are excluded. |
 | Vercel deployment | Blocked | No Hushley project/deployment found in the connected Vercel account; no `.vercel` project link exists locally. |
 | End-to-end commerce | Not verified | Needs test customer, test products, payment-proof upload, manual admin review, and shipping checks. |
 
@@ -17,7 +17,7 @@ Last reviewed: 9 November 2026 (Asia/Manila)
 
 - [x] Confirm the intended GitHub repository and default branch. Current configured remote: `https://github.com/hushleybilliards-wq/Hushley_E-commerce.git` (`main`).
 - [x] Review the local project files and ensure `.env`, credentials, and build output stay excluded.
-- [x] Publish the reviewed project to the existing public GitHub repository; remote branch `main` was verified at `77640ca`.
+- [x] Publish the reviewed project to the existing public GitHub repository; latest published commit is `d648147` on `main`.
 - [ ] Connect that repository to the client's existing Vercel project, or identify the correct Vercel account/team if the project is not visible.
 - [ ] Configure Vercel production environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Never use a Supabase secret/service-role key in a `VITE_*` variable.
 - [ ] Deploy a preview and verify storefront, account, checkout, and admin routes.

@@ -161,9 +161,6 @@ form.addEventListener('submit', async (event) => {
 });
 
 document.querySelector('.config-alert').hidden = isSupabaseConfigured;
-form.querySelectorAll('input,button').forEach((field) => { if (!isSupabaseConfigured) field.disabled = true; });
-if (!isSupabaseConfigured) document.querySelector('#forgot-password').disabled = true;
-if (!isSupabaseConfigured) document.querySelector('#switch-mode').disabled = true;
 if (isSupabaseConfigured) {
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
