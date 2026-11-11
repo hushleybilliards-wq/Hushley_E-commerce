@@ -42,7 +42,13 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 
 ## Confirmed customer account verification
 
-- Signup offers verification through either email OTP or SMS OTP. Customers choose one as their verified Supabase Auth identity and then set a password; do not show the account as signed in until `verifyOtp` succeeds.
+- New signups must use an `@gmail.com` address without a `+` sign; numbers in customer names are allowed. Existing users retain their sign-in and recovery methods. The form implements this rule; the reviewed Before User Created hook migration has been deployed, but must still be enabled in Supabase for server-side enforcement. The hook blocks new phone-only identities while active.
+- Blocking plus aliases is not bot protection. Keep server-side Auth rate limits and email confirmation in force; CAPTCHA needs a configured provider and client integration before activation.
+- Philippine customer contact numbers are unique across profiles, including equivalent +63 and 09 formats. The number is not SMS-verified; signup can claim it before email confirmation, so a number may require staff assistance if claimed incorrectly. Existing unconfirmed email signup behavior remains governed by Supabase Auth.
+
+- Signup collects an email first, sends a signup OTP, and verifies it before collecting name, phone and the customer's password. SMS signup is hidden. Supabase creates an incomplete Auth user when sending the code; a temporary random password is replaced when the customer completes the form. After a page reload, a verified incomplete account resumes the details step. Do not present it as a completed account before verification and details submission.
+- SMS signup is temporarily hidden in the signup interface; email signup still collects a mobile number for contact. Existing phone sign-ins are preserved.
+- Signup and password reset UI require at least eight characters, an uppercase letter, a symbol, no three consecutive ascending or descending digits, and a password different from the email. Browser checks are not a substitute for server-side Auth enforcement.
 - Password recovery uses an email OTP: request it with `resetPasswordForEmail`, verify with `verifyOtp({ email, token, type: 'recovery' })`, then allow the user to set a new password. Configure the hosted **Reset Password** email template with `{{ .Token }}`.
 - Collect the mobile number as a contact for email-primary signups. For phone-primary signups, collect an email for order contact but treat it as unverified metadata; checkout still collects the customer email for each order.
 - Normalize Philippine mobile numbers to E.164 before calling Supabase Auth. Accept an international number only when it is valid for the Auth provider.
@@ -52,8 +58,12 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 
 ## Confirmed checkout and payment requirements
 
+- Administrator accounts are for shop management and cannot place customer orders; use the trusted admin role for enforcement.
+- New internal order references include the Manila date. Courier tracking numbers are supplied by the courier and recorded separately.
 - Checkout requires a customer to choose GCash, MariBank, PayPal, or PNB bank transfer.
 - The customer uploads proof of payment after checkout.
+- A customer may cancel an unpaid order once, only before submitting any payment proof. Require a cancellation reason, release its reservation transactionally, and direct customers who already paid or submitted proof to contact the shop. There is no automatic refund.
+- Customers pay the product subtotal first and upload proof; after manual approval staff contact the customer to arrange shipping payment separately. Lalamove is paid to the rider. Existing unquoted pending orders with zero shipping and no payment proof can follow this flow; preserve other existing orders under their original terms.
 - Payment verification is manual: staff check their bank/e-wallet account and then approve or reject the proof in the admin flow. Do not describe or implement payment as automatically verified.
 - An order must not be treated as paid until staff approve the payment.
 
@@ -82,7 +92,7 @@ The owner has not specified how to combine shipping for mixed carts (for example
 
 ## Existing implementation status
 
-The production Supabase project has four migrations in `supabase/migrations/`. Product categories, `options` and `specifications` JSON, order-item `selected_options`, manual payment review, private payment proof storage, shipping quotes, and transactional inventory functions are live. The storefront now collects configured product options and persists them with cart lines and checkout. The admin can create/edit options, specifications, and staff-assigned shipping classes. A verified account matching `hushleybilliards@gmail.com` is granted the trusted `app_metadata.role = 'admin'` claim by migration `20261110160235_hushley_owner_admin_role.sql`; Supabase Auth still requires the owner to sign up and verify that email. These screens build but still need authenticated end-to-end verification.
+The production Supabase project has ten migrations in `supabase/migrations/`, including product-first payment, image-only proof restrictions, saved default addresses, admin ordering restrictions, and customer cancellation before proof submission. Product categories, `options` and `specifications` JSON, order-item `selected_options`, manual payment review, private payment proof storage, shipping quotes, and transactional inventory functions are live. The storefront now collects configured product options and persists them with cart lines and checkout. The admin can create/edit options, specifications, and staff-assigned shipping classes. A verified account matching `hushleybilliards@gmail.com` is granted the trusted `app_metadata.role = 'admin'` claim by migration `20261110160235_hushley_owner_admin_role.sql`; Supabase Auth still requires the owner to sign up and verify that email. These screens build but still need authenticated end-to-end verification.
 
 Checkout currently asks for a courier and payment method. Shipping fee is currently editable/confirmed by staff in the admin page. The fixed domestic/international rate rules above are requirements to implement; do not assume the current checkout calculates them. Inspect the current UI, JavaScript, migration, and RLS before changing behavior. Keep the Lalamove website shipping amount at zero and represent international shipping as an estimate with a manual adjustment process.
 

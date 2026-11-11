@@ -7,6 +7,7 @@ let activeCategoryId = null;
 let searchTerm = '';
 let slowTimer;
 let toastTimer;
+let isAdminSession = false;
 const readStore = (key) => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
 function readCart() {
   try { return new Map(JSON.parse(localStorage.getItem('hushley-cart') || '[]')); }
@@ -20,6 +21,7 @@ const overlay = document.querySelector('.overlay');
 const toast = document.querySelector('.toast');
 const status = document.querySelector('#catalog-status');
 const categoryTrack = document.querySelector('#hero-category-track');
+const adminDashboardLink = document.querySelector('.admin-dashboard-link');
 const fallbackCategories = [
   { id: 'cues', name: 'Billiard Cues' }, { id: 'shafts', name: 'Carbon Shafts' },
   { id: 'chalk', name: 'Billiard Chalk' }, { id: 'tips', name: 'Billiard Tips' },
@@ -142,6 +144,11 @@ function closeDrawer() {
   drawer.classList.remove('open'); drawer.setAttribute('aria-hidden', 'true');
   overlay.hidden = true; document.body.classList.remove('drawer-open');
 }
+function cartPhoto(product) {
+  const liveProduct = products.find((item) => item.id === product.id);
+  const image = liveProduct?.image_urls?.find((url) => typeof url === 'string' && url.trim()) || product.image_urls?.find((url) => typeof url === 'string' && url.trim());
+  return image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}"/>` : '<span class="material-symbols-outlined" aria-hidden="true">image_not_supported</span>';
+}
 function updateCart() {
   const count = [...cart.values()].reduce((sum, line) => sum + line.quantity, 0);
   document.querySelector('.bag-count').textContent = count;
@@ -150,11 +157,12 @@ function updateCart() {
   const lines = [...cart.entries()];
   document.querySelector('.empty-cart').hidden = lines.length > 0;
   document.querySelector('.cart-footer').hidden = lines.length === 0;
-  document.querySelector('.cart-items').innerHTML = lines.map(([key, { product, quantity, selected_options = {} }]) => `<div class="cart-line"><div class="cart-thumb">${art(product.image)}</div><div class="cart-info"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category === 'Cues' ? 'Cues & shafts' : product.category)}</p>${Object.keys(selected_options).length ? `<small class="cart-options">${formatSelectedOptions(selected_options)}</small>` : ''}<div class="qty-control"><button data-qty="${escapeHtml(key)}" data-delta="-1" aria-label="Remove one ${escapeHtml(product.name)}">−</button><span>${quantity}</span><button data-qty="${escapeHtml(key)}" data-delta="1" aria-label="Add one ${escapeHtml(product.name)}">+</button></div></div><span class="cart-line-price">${Number.isFinite(Number(product.price)) && product.price !== undefined ? money(product.price * quantity) : 'PRICE TBD'}</span></div>`).join('');
+  document.querySelector('.cart-items').innerHTML = lines.map(([key, { product, quantity, selected_options = {} }]) => `<div class="cart-line"><div class="cart-thumb">${cartPhoto(product)}</div><div class="cart-info"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category === 'Cues' ? 'Cues & shafts' : product.category)}</p>${Object.keys(selected_options).length ? `<small class="cart-options">${formatSelectedOptions(selected_options)}</small>` : ''}<div class="qty-control"><button data-qty="${escapeHtml(key)}" data-delta="-1" aria-label="Remove one ${escapeHtml(product.name)}">−</button><span>${quantity}</span><button data-qty="${escapeHtml(key)}" data-delta="1" aria-label="Add one ${escapeHtml(product.name)}">+</button></div></div><div class="cart-line-end"><button type="button" class="cart-remove" data-remove="${escapeHtml(key)}" aria-label="Remove ${escapeHtml(product.name)} from cart">×</button><span class="cart-line-price">${Number.isFinite(Number(product.price)) && product.price !== undefined ? money(product.price * quantity) : 'PRICE TBD'}</span></div></div>`).join('');
   const total = lines.reduce((sum, [, { product, quantity }]) => sum + (Number(product.price) || 0) * quantity, 0);
   document.querySelector('.subtotal').textContent = lines.every(([, { product }]) => Number.isFinite(Number(product.price)) && product.price !== undefined) ? money(total) : 'TO BE CONFIRMED';
 }
 function addProduct(id, card) {
+  if (isAdminSession) { showToast('Admin accounts cannot place orders'); return false; }
   const product = products.find((item) => item.id === id);
   if (!product || product.available_count === 0) { showToast('THIS ITEM IS OUT OF STOCK'); return false; }
   const selectors = [...card.querySelectorAll('[data-option-name]')];
@@ -171,8 +179,18 @@ function addProduct(id, card) {
   const key = cartKey(product, selected_options);
   const current = cart.get(key);
   cart.set(key, { product, quantity: (current?.quantity || 0) + 1, selected_options });
-  updateCart(); showToast(`${product.name} ADDED TO CART`); return true;
+  updateCart(); showToast(`${product.name} ADDED TO CART`); openDrawer(); return true;
 }
+function showProductPage(product) {
+  const page = document.querySelector('#product-page');
+  if (!product) { page.hidden = true; [...document.querySelector('main').children].filter((node) => node !== page).forEach((node) => node.hidden = false); document.title = 'Hushley Billiard Accessories'; return; }
+  [...document.querySelector('main').children].filter((node) => node !== page).forEach((node) => node.hidden = true);
+  page.hidden = false;
+  page.innerHTML = `<div class="detail-topbar"><button type="button" class="detail-close" data-product-back aria-label="Close product details">×</button></div><div class="detail-layout" data-product-card="${escapeHtml(product.id)}"><div class="detail-gallery"><img src="${escapeHtml(product.image_urls[0])}" alt="${escapeHtml(product.name)}"></div><div class="detail-info"><div class="detail-intro"><p class="eyebrow">${escapeHtml(product.category)} · ${product.available_count > 0 ? `${product.available_count} IN STOCK` : 'SOLD OUT'}</p><h1>${escapeHtml(product.name)}</h1><p class="detail-price">${product.price !== undefined ? money(product.price) : 'PRICE TO BE CONFIRMED'}</p><p class="detail-description">${escapeHtml(product.description || '')}</p></div><section class="detail-options-block"><h2>Choose variations</h2>${getProductOptions(product).map((option, index) => { const name = option.name.trim(); const required = option.required !== false; return `<label>${escapeHtml(name)}${required ? ' (required)' : ' (optional)'}<select data-product-option="${index}" data-option-name="${escapeHtml(name)}" ${required ? 'required' : ''}><option value="">${required ? `Choose ${escapeHtml(name.toLowerCase())}` : 'No preference'}</option>${option.values.filter((value) => typeof value === 'string' && value.trim()).map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}</select></label>`; }).join('')}<p class="product-option-error" role="status" aria-live="polite" hidden></p><div class="detail-actions"><button class="button button-outline" data-add="${escapeHtml(product.id)}" ${product.available_count === 0 ? 'disabled' : ''}>ADD TO CART</button><button class="button button-primary" data-buy-now="${escapeHtml(product.id)}" ${product.available_count === 0 ? 'disabled' : ''}>BUY NOW</button></div></section><section class="detail-specs"><h2>Specifications</h2>${renderSpecifications(product.specifications) || '<p>Specifications have not been provided for this item.</p>'}</section></div></div>`;
+  document.title = `${product.name} · Hushley Billiards`;
+  window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+function navigateProduct(product) { history.pushState({ productId: product.id }, '', `/?product=${encodeURIComponent(product.id)}`); showProductPage(product); }
 async function loadCatalog() {
   if (!isSupabaseConfigured) {
     renderCategoryCarousel(fallbackCategories);
@@ -212,9 +230,18 @@ async function loadCatalog() {
   setStatus(hiddenIncomplete ? 'notice' : '', hiddenIncomplete ? `<span class="material-symbols-outlined" aria-hidden="true">info</span><span>${hiddenIncomplete} published product${hiddenIncomplete === 1 ? ' is' : 's are'} hidden until staff add a photo and description.</span>` : '');
   document.querySelector('.catalog-note').hidden = true;
   renderProducts(); updateCart();
+  const productId = new URLSearchParams(location.search).get('product');
+  if (productId) showProductPage(products.find((product) => product.id === productId));
 }
 
 grid.addEventListener('click', (event) => {
+  const card = event.target.closest('[data-product-card]');
+  if (card && !event.target.closest('button, select, a, input')) {
+    const product = products.find((item) => item.id === card.dataset.productCard);
+    if (product) navigateProduct(product);
+    return;
+  }
+  if (event.target.closest('[data-product-back]')) { event.preventDefault(); history.pushState({}, '', '/'); showProductPage(null); return; }
   const buyNow = event.target.closest('[data-buy-now]');
   if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'))) { window.location.href = '/checkout.html'; return; }
   const add = event.target.closest('[data-add]'); if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
@@ -228,12 +255,25 @@ grid.addEventListener('click', (event) => {
   if (event.target.closest('[data-clear-search]')) { document.querySelector('#catalog-search').value = ''; searchTerm = ''; renderProducts(); document.querySelector('#catalog-search').focus(); }
   if (event.target.closest('[data-retry]')) loadCatalog();
 });
+document.querySelector('#product-page').addEventListener('click', (event) => {
+  if (event.target.closest('[data-product-back]')) { event.preventDefault(); history.pushState({}, '', '/'); showProductPage(null); return; }
+  const add = event.target.closest('[data-add]');
+  if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
+  const buy = event.target.closest('[data-buy-now]');
+  if (buy && addProduct(buy.dataset.buyNow, buy.closest('[data-product-card]'))) window.location.href = '/checkout.html';
+});
+window.addEventListener('popstate', () => {
+  const id = new URLSearchParams(location.search).get('product');
+  showProductPage(id ? products.find((product) => product.id === id) : null);
+});
 grid.addEventListener('change', (event) => {
   if (!event.target.matches('[data-option-name]')) return;
   const error = event.target.closest('[data-product-card]')?.querySelector('.product-option-error');
   if (error) { error.textContent = ''; error.hidden = true; }
 });
 document.querySelector('.cart-items').addEventListener('click', (event) => {
+  const remove = event.target.closest('[data-remove]');
+  if (remove) { cart.delete(remove.dataset.remove); updateCart(); return; }
   const button = event.target.closest('[data-qty]'); if (!button) return;
   const entry = cart.get(button.dataset.qty); if (!entry) return; entry.quantity += Number(button.dataset.delta);
   if (entry.quantity <= 0) cart.delete(button.dataset.qty); updateCart();
@@ -253,7 +293,7 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault(); document.querySelector('#catalog-search').focus();
   }
 });
-document.querySelector('.checkout-button').addEventListener('click', () => { window.location.href = '/checkout.html'; });
+document.querySelector('.checkout-button').addEventListener('click', () => { if (isAdminSession) { showToast('Admin accounts cannot place orders'); return; } window.location.href = '/checkout.html'; });
 categoryTrack?.addEventListener('click', (event) => {
   const card = event.target.closest('[data-category-id]');
   if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);
@@ -268,5 +308,11 @@ document.querySelectorAll('.main-nav a').forEach((link) => link.addEventListener
 window.addEventListener('offline', () => setStatus('offline', '<span class="material-symbols-outlined" aria-hidden="true">wifi_off</span><span>You are offline. Your cart is saved on this device.</span>'));
 window.addEventListener('online', () => { setStatus('reconnected', '<span class="material-symbols-outlined" aria-hidden="true">wifi</span><span>Connection restored.</span>'); setTimeout(() => { if (navigator.onLine) { setStatus('', ''); if (isSupabaseConfigured) loadCatalog(); } }, 2200); });
 document.querySelector('#year').textContent = new Date().getFullYear();
+if (isSupabaseConfigured) {
+  const syncAdminLink = (user) => { isAdminSession = user?.app_metadata?.role === 'admin'; adminDashboardLink.hidden = !isAdminSession; document.body.classList.toggle('admin-session', isAdminSession); };
+  supabase.auth.getUser().then(({ data }) => syncAdminLink(data.user));
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => syncAdminLink(session?.user));
+  window.addEventListener('beforeunload', () => subscription.unsubscribe(), { once: true });
+}
 renderProducts(); updateCart();
 loadCatalog();

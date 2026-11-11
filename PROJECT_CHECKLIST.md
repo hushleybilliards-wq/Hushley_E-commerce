@@ -1,5 +1,13 @@
 # Hushley Ecommerce Project Checklist
 
+## Database update — 12 November 2026
+
+- Customer cancellation migration `20261111184421` was applied; RPC permissions and the stock-release trigger were checked. The offline suite passes 117 assertions. Customer cancellation still requires authenticated end-to-end and concurrent-session verification.
+- Follow-up migrations `20261111173322` and `20261111173648` add date-based internal order references, prevent admin accounts placing orders even with stale claims, and provide an admin-only customer list excluding administrators. Both were tested locally and applied to the existing Hushley project. Courier tracking remains a separate staff-entered field.
+- The existing Hushley production database now has all seven local migrations, including image-type proof restrictions, account default addresses, and product-first payment with separately recorded shipping. CLI migration history and private bucket settings were checked after rollout.
+- Two pending orders without a confirmed shipping charge or proof were moved to product-first payment; established/cancelled orders retained their original terms. No payment records existed at the time of the check.
+- The build and offline database regression suite passed (100 assertions). Authenticated checkout, proof upload and staff review still need end-to-end verification; storage MIME restrictions alone do not guarantee image bytes are safe.
+
 Last reviewed: 11 November 2026 (Asia/Manila)
 
 ## Status at a glance

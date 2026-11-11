@@ -24,7 +24,6 @@
       </a>
       <div class="account-header-actions">
         <span class="secure-badge"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> SECURE ACCOUNT ACCESS</span>
-        <a href="/">BACK TO SHOP</a>
         <a href="mailto:hushleybilliards@gmail.com">CUSTOMER SUPPORT</a>
       </div>
     </header>
@@ -40,27 +39,28 @@
 
         <form id="auth-form" novalidate>
           <div class="signup-progress" id="signup-progress" hidden>
-            <span class="progress-step is-current" data-progress-step="1"><span>1</span> VERIFY CONTACT</span>
+            <span class="progress-step is-current" data-progress-step="1"><span>1</span> EMAIL</span>
             <span class="progress-line" aria-hidden="true"></span>
-            <span class="progress-step" data-progress-step="2"><span>2</span> DETAILS</span>
+            <span class="progress-step" data-progress-step="2"><span>2</span> CODE</span>
             <span class="progress-line" aria-hidden="true"></span>
-            <span class="progress-step" data-progress-step="3"><span>3</span> CODE</span>
+            <span class="progress-step" data-progress-step="3"><span>3</span> DETAILS</span>
           </div>
 
           <fieldset class="signup-methods" id="signup-methods" hidden>
-            <legend>CHOOSE HOW TO VERIFY</legend>
+            <legend>VERIFY YOUR EMAIL</legend>
             <label><input type="radio" name="signup_channel" value="email" checked /><span class="material-symbols-outlined" aria-hidden="true">mail</span> Email code</label>
-            <label><input type="radio" name="signup_channel" value="phone" /><span class="material-symbols-outlined" aria-hidden="true">call</span> SMS code</label>
+            <!-- SMS signup is temporarily hidden; existing phone sign-ins remain available. -->
           </fieldset>
           <label class="auth-field" id="email-field">
-            <span id="email-label">EMAIL OR MOBILE NUMBER</span>
-            <span class="auth-input-wrap"><span class="material-symbols-outlined" id="identifier-icon" aria-hidden="true">mail</span><input name="identifier" type="text" autocomplete="username" inputmode="email" placeholder="name@example.com or +63 9XX XXX XXXX" required /></span>
+            <span id="email-label">EMAIL ADDRESS</span>
+            <span class="auth-input-wrap"><span class="material-symbols-outlined" id="identifier-icon" aria-hidden="true">mail</span><input name="identifier" type="text" autocomplete="username" inputmode="email" placeholder="Email address" required /></span>
           </label>
-          <button class="email-continue button button-primary" id="continue-signup" type="button" hidden>CONTINUE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+          <p class="form-status" id="signup-email-status" role="status" aria-live="polite" hidden></p>
+          <button class="email-continue button button-primary" id="continue-signup" type="button" hidden>SEND VERIFICATION CODE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
           <button class="change-email" id="change-signup-email" type="button" hidden>CHANGE CONTACT</button>
 
           <div class="signup-details" id="signup-details" hidden>
-            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> We’ll send a one-time verification code to your selected contact.</p>
+            <p class="signup-email-note"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span> Email verified. Complete your account details below.</p>
             <label class="auth-field name-field">
               <span>FULL NAME</span>
               <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">person</span><input name="full_name" autocomplete="name" minlength="2" placeholder="Your full name" /></span>
@@ -72,12 +72,13 @@
             </label>
             <label class="auth-field phone-field">
               <span>MOBILE NUMBER</span>
-              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">call</span><span class="phone-prefix" aria-hidden="true">+63</span><input name="phone" type="tel" autocomplete="tel-national" inputmode="numeric" pattern="[0-9() .-]{10,16}" placeholder="9XX XXX XXXX" /></span>
-              <small>Enter your Philippine mobile number after +63 (for example, 917 123 4567).</small>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">call</span><span class="phone-prefix" aria-hidden="true">+63</span><input name="phone" type="tel" autocomplete="tel-national" inputmode="numeric" pattern="9[0-9]{9}" minlength="10" maxlength="10" placeholder="9171234567" /></span>
+              <small>Enter 10 digits after +63, starting with 9 (for example, 9171234567).</small>
             </label>
             <label class="auth-field password-field">
               <span>PASSWORD</span>
               <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock</span><input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required /><button class="password-toggle" type="button" data-toggle-password="password" aria-label="Show password"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button></span>
+              <small>At least 8 characters, one uppercase letter and one symbol. Avoid number sequences such as 123 or 321, and use a password different from your email.</small>
             </label>
             <label class="auth-field confirm-password-field">
               <span>CONFIRM PASSWORD</span>
@@ -85,7 +86,7 @@
             </label>
             <label class="terms-check"><input name="terms_accepted" type="checkbox" /><span>I agree to Hushley’s customer account terms and privacy notice.</span></label>
             <p class="form-status signup-form-status" role="status" aria-live="polite"></p>
-            <button class="button button-primary auth-submit" type="submit">SEND VERIFICATION CODE <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+            <button class="button button-primary auth-submit" type="submit">CREATE ACCOUNT <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
           </div>
 
           <div class="signup-otp" id="signup-otp" hidden>
@@ -101,6 +102,7 @@
             <label class="auth-field password-field">
               <span>PASSWORD</span>
               <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">lock</span><input name="signin_password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" type="button" data-toggle-password="signin_password" aria-label="Show password"><span class="material-symbols-outlined" aria-hidden="true">visibility</span></button></span>
+              <small id="recovery-password-rules" hidden>At least 8 characters, one uppercase letter and one symbol. Avoid number sequences such as 123 or 321 and use a password different from your email.</small>
             </label>
             <p class="form-status" role="status" aria-live="polite"></p>
             <button class="button button-primary auth-submit" type="submit">SIGN IN <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
@@ -111,14 +113,20 @@
       </section>
 
       <section class="account-card signed-in-card" id="account-panel" hidden>
-        <img class="auth-logo" src="/images/hushley-logo.png" alt="" />
-        <p class="eyebrow">YOUR HUSHLEY ACCOUNT</p>
-        <h1>WELCOME BACK</h1>
-        <p id="account-email" class="account-lead"></p>
-        <p id="order-notice" class="form-status" role="status" aria-live="polite"></p>
+        <div class="profile-heading"><span class="profile-avatar material-symbols-outlined" aria-hidden="true">person</span><div><p class="eyebrow">HUSHLEY CUSTOMER ACCOUNT</p><h1>Your account</h1><p class="account-lead">Manage your contact details and follow your orders.</p></div></div>
+        <div class="account-shell"><nav class="account-sections" aria-label="Account sections"><a href="#account" data-account-view="account">My Account</a><a href="#addresses" data-account-view="addresses">My Addresses</a><a href="#orders" data-account-view="orders">My Orders</a><a href="#payment" data-account-view="payment">My Payment</a><button class="account-nav-signout" id="sign-out" type="button">Sign out</button></nav><div class="account-content"><div id="account-profile-view">
+        <div class="account-identity"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><div><strong>Sign-in identity</strong><p id="account-email"></p><small id="identity-status"></small></div></div>
+        <form id="customer-profile-form" class="customer-profile-form">
+          <div class="profile-form-heading"><h2>Contact details</h2><p>Used to help the shop contact you about your orders. Checkout collects your delivery details separately.</p></div>
+          <label>Full name<input name="full_name" autocomplete="name" minlength="2" required /></label>
+          <label>Contact mobile number<input name="phone" type="tel" autocomplete="tel" placeholder="+63 9XX XXX XXXX" /></label>
+          <p id="profile-status" class="form-status" role="status" aria-live="polite"></p>
+          <button class="button button-primary" type="submit">SAVE PROFILE</button>
+        </form>
+        </div><section id="addresses-view" class="addresses-view" hidden><div class="addresses-heading"><div><p class="eyebrow">DELIVERY</p><h2>My Addresses</h2><p>Save one default address for checkout.</p></div><button type="button" class="button button-primary" id="address-edit">Add address</button></div><div id="saved-address" aria-live="polite"></div><form id="address-form" class="address-editor" hidden><label>Recipient name<input name="customer_name" autocomplete="name" required /></label><label>Mobile number<input name="mobile" type="tel" autocomplete="tel" required /></label><label>Email<input name="email" type="email" autocomplete="email" required /></label><label>Destination<select name="delivery_type"><option value="local">Philippines</option><option value="international">International</option></select></label><label id="address-country-label" hidden>Country<select name="country" disabled></select></label><label id="address-zone-label" hidden>Shipping region<select name="shipping_region" disabled><option value="">Choose region</option><option value="Asia">Asia</option><option value="Outside Asia">Outside Asia</option></select></label><label id="address-province-label">Province / Metro Manila<select name="province_code" required><option value="">Loading provinces…</option></select></label><label id="address-city-label">City / Municipality<select name="city_code" required><option value="">Select province first</option></select></label><label id="address-barangay-label">Barangay<select name="barangay_code" required><option value="">Select city first</option></select></label><label id="address-state-label" hidden>State / Province<input name="province" disabled /></label><label id="address-international-city-label" hidden>City<input name="city" disabled /></label><label>Street address, house / building number<input name="address_line" autocomplete="street-address" required /></label><label>ZIP / Postal code<input name="postal_code" autocomplete="postal-code" required /></label><p id="address-form-status" role="status" aria-live="polite"></p><div class="address-actions"><button type="submit" class="button button-primary">Save address</button><button type="button" class="button button-outline" id="address-cancel">Cancel</button></div></form></section><p id="order-notice" class="form-status" role="status" aria-live="polite"></p>
         <p id="account-connection" class="connection-state" role="status" aria-live="polite" hidden></p>
-        <div class="account-actions"><a class="button button-outline" href="/">CONTINUE SHOPPING</a><a class="button button-primary" href="/admin.html" id="admin-link" hidden>OPEN ADMIN DASHBOARD</a><button class="button button-outline signout-button" id="sign-out">SIGN OUT</button></div>
-        <div class="order-history"><div class="order-history-head"><h2>YOUR ORDERS</h2><button type="button" id="refresh-orders">REFRESH</button></div><div id="orders-list" aria-live="polite"><p class="empty-orders">Your orders will appear here.</p></div></div>
+        <div class="order-history" id="orders" hidden><div class="order-history-head"><div><p class="eyebrow" id="customer-view-eyebrow">ORDERS</p><h2 id="customer-view-title">My orders</h2><p id="customer-view-description">Review your purchases and delivery status.</p><div id="payment-instructions" hidden><p>Payment is made outside the website using your selected method. <a href="mailto:hushleybilliards@gmail.com?subject=Hushley%20payment%20details">Contact the shop for payment details</a>.</p><div class="payment-placeholder"><strong>Mock payment details — do not send payment</strong><p>The shop will replace these placeholders with its real account details. Confirm the recipient with the shop before paying.</p><ul><li>GCash: account name and number to be provided</li><li>MariBank: account name and number to be provided</li><li>PayPal: account name and payment link to be provided</li><li>PNB bank transfer: account name and number to be provided</li></ul></div></div></div><button type="button" id="refresh-orders">REFRESH ORDERS</button></div><div class="order-filters" role="group" aria-label="Filter orders" hidden><button type="button" class="order-filter active" data-order-filter="all" aria-pressed="true">All</button><button type="button" class="order-filter" data-order-filter="to-pay" aria-pressed="false">To pay</button><button type="button" class="order-filter" data-order-filter="processing" aria-pressed="false">Processing</button><button type="button" class="order-filter" data-order-filter="in-transit" aria-pressed="false">In transit</button><button type="button" class="order-filter" data-order-filter="delivered" aria-pressed="false">Delivered</button><button type="button" class="order-filter" data-order-filter="cancelled" aria-pressed="false">Cancelled</button></div><label class="order-search-label"><span>Search your orders</span><input id="customer-order-search" type="search" placeholder="Order number or product name" /></label><div id="orders-list" aria-live="polite"><p class="empty-orders">Your orders will appear here.</p></div></div>
+        </div></div>
       </section>
     </main>
 
