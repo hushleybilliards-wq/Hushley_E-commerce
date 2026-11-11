@@ -56,3 +56,12 @@ body :is(p, a, button, input, select, textarea, label, small, td, th, summary, l
 @media (max-width: 600px) {
   .product-specifications > div { align-items: flex-start; }
 }
+
+/* Keep narrow screens from expanding the document when labels or controls wrap. */
+@media (max-width: 600px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+  .subpage { width: 100%; min-width: 0; }
+  .subpage :is(.account-header, .account-footer, .account-wrap, .checkout-wrap, .admin-main) { min-width: 0; max-width: 100%; }
+  .subpage :is(img, input, select, textarea) { max-width: 100%; }
+  .subpage :is(.button, .admin-action) { max-width: 100%; white-space: normal; text-align: center; }
+}

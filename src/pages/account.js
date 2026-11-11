@@ -45,11 +45,11 @@ window.addEventListener('online', () => {
 networkState();
 function selectedChannel() { return form.elements.signup_channel.value; }
 function normalizedPhone(value) {
-  let digits = String(value || '').replace(/[^\d]/g, '');
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  if (digits.startsWith('0') && digits.length === 11) digits = `63${digits.slice(1)}`;
-  if (/^[1-9]\d{7,14}$/.test(digits)) return `+${digits}`;
-  return '';
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.startsWith('0063')) digits = digits.slice(4);
+  else if (digits.startsWith('63')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  return /^9\d{9}$/.test(digits) ? `+63${digits}` : '';
 }
 function updateMode() {
   const signup = mode === 'signup';

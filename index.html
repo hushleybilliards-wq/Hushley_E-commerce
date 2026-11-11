@@ -9,29 +9,27 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
     <link rel="stylesheet" href="/src/styles/theme.css" />
     <link rel="stylesheet" href="/src/styles/storefront.css" />
-    <link rel="stylesheet" href="/src/styles/readability.css" />
   </head>
   <body>
     <div class="announcement"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><span>PAYMENT METHODS: GCASH · MARIBANK · PAYPAL · PNB BANK TRANSFER</span><span class="announcement-note">Payment proof is reviewed manually by staff</span></div>
     <header class="site-header" id="top">
       <a class="brand" href="#top" aria-label="Hushley home"><span class="brand-mark brand-logo-mark"><img src="/images/hushley-logo.png" alt="" /></span><span class="brand-name">HUSHLEY BILLIARDS<small>PLAYER GEAR & ACCESSORIES</small></span></a>
       <label class="header-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><input id="catalog-search" type="search" placeholder="Search products or SKU…" aria-label="Search the catalog" /><kbd>/</kbd></label>
-      <nav class="main-nav" aria-label="Main navigation"><a href="#products">CATALOG</a><a href="#shop">CATEGORIES</a><a href="#service">PAYMENT & SHIPPING</a><a href="/account.html">ACCOUNT</a></nav>
       <div class="header-actions"><button class="bag-button" aria-label="Open shopping cart"><span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span><span>CART</span><b class="bag-count">0</b></button><a class="account-link" href="/account.html" aria-label="Account"><span class="material-symbols-outlined" aria-hidden="true">person</span></a><button class="menu-toggle" aria-label="Open navigation" aria-expanded="false"><span></span><span></span></button></div>
     </header>
+    <nav class="main-nav" aria-label="Main navigation"><a aria-current="page" href="#products">CATALOG / ALL PRODUCTS</a><a href="#shop">PRODUCT CATEGORIES</a><a href="#service">ORDER INFORMATION</a><a href="/account.html">ACCOUNT</a></nav>
     <main>
-      <section class="hero-category-showcase" id="shop" aria-labelledby="shop-category-title">
-        <div class="hero-category-heading">
-          <div><p class="eyebrow"><span class="live-dot"></span> HUSHLEY / CATEGORY INDEX</p><h1 id="shop-category-title">SHOP BY CATEGORY</h1><p>Browse billiard gear by category.</p></div>
-        </div>
-        <div class="hero-category-carousel" role="region" aria-label="Product categories" aria-roledescription="carousel">
-          <div class="hero-category-track" id="hero-category-track" aria-live="off"></div>
-        </div>
-        <p class="hero-category-hint"><span class="material-symbols-outlined" aria-hidden="true">swipe</span> Select a category to view matching products</p>
+      <section class="catalog-hero" id="shop" aria-labelledby="shop-category-title">
+        <div class="catalog-hero-copy"><p class="eyebrow"><span class="live-dot"></span> CATALOG / ALL PRODUCTS</p><h1 id="shop-category-title">HUSHLEY BILLIARDS</h1><p>Browse billiard equipment and accessories. Product specifications and availability reflect details supplied by the shop.</p></div>
+        <div class="catalog-proof" aria-label="Shop information"><article><span class="material-symbols-outlined" aria-hidden="true">tune</span><div><small>PRODUCT DETAILS</small><strong>Item specifications</strong><p>Shown per product</p></div></article><article><span class="material-symbols-outlined" aria-hidden="true">payments</span><div><small>PAYMENT OPTIONS</small><strong>4 methods available</strong><p>Selected at checkout</p></div></article><article><span class="material-symbols-outlined" aria-hidden="true">fact_check</span><div><small>PAYMENT REVIEW</small><strong>Staff verified</strong><p>Proof checked manually</p></div></article></div>
       </section>
+      <div class="hero-category-showcase" aria-label="Product categories">
+        <div class="hero-category-carousel"><div class="hero-category-track" id="hero-category-track" aria-live="off"></div></div>
+      </div>
       <section class="catalog" id="products"><div class="catalog-heading"><div><p class="eyebrow">01 / BROWSE THE SHOP</p><h2>ALL PRODUCTS <span class="material-symbols-outlined" aria-hidden="true">north_east</span></h2></div><div class="catalog-count"><span class="live-dot"></span> STAFF-PUBLISHED PRODUCTS</div></div>
         <div id="catalog-status" class="catalog-status" role="status" aria-live="polite" hidden></div>
         <div class="catalog-toolbar"><div class="filter-tabs" role="group" aria-label="Filter products"><button class="filter active" data-filter="All" aria-pressed="true">ALL PRODUCTS</button><button class="filter" data-filter="Cues" aria-pressed="false">CUES & SHAFTS</button><button class="filter" data-filter="Chalk" aria-pressed="false">CHALK</button><button class="filter" data-filter="Accessories" aria-pressed="false">ACCESSORIES</button></div><span class="toolbar-note"><span class="material-symbols-outlined" aria-hidden="true">tune</span> FILTER BY CATEGORY</span></div>

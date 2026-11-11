@@ -54,6 +54,7 @@
 .auth-input-wrap { min-height:47px; display:flex; align-items:center; gap:10px; padding:0 12px; border:1px solid #303238; border-radius:4px; background:#0d0f13; transition:border-color 150ms ease, box-shadow 150ms ease; }
 .auth-input-wrap:focus-within { border-color:var(--ui-primary); box-shadow:0 0 0 3px rgba(78,222,163,.11); }
 .auth-input-wrap > .material-symbols-outlined { flex:0 0 auto; color:#b6aa92; font-size:19px; }
+.auth-input-wrap > .phone-prefix { flex:0 0 auto; color:#f4f4f2; font:500 15px/1.4 var(--sans); }
 .auth-input-wrap input { width:100%; min-width:0; height:45px; padding:0; border:0; outline:0; background:transparent; color:#f4f4f2; font:400 15px/1.4 var(--sans); }
 .auth-input-wrap input::placeholder { color:#70747c; opacity:1; }
 .auth-input-wrap input[readonly] { color:#bcbfbd; }
@@ -95,16 +96,31 @@
   .account-portal-wrap { margin:27px auto 42px; padding:0 14px; }
 }
 @media(max-width:480px) {
-  .account-header { align-items:flex-start; }
+  .account-header { align-items:center; flex-wrap:wrap; row-gap:8px; }
   .account-brand { gap:7px; font-size:12px; }
   .account-brand img { width:32px; height:32px; }
   .account-brand small { font-size:8px; }
-  .account-header-actions { flex-direction:column; align-items:flex-end; gap:4px; }
+  .account-header-actions { flex:1 1 100%; justify-content:flex-end; flex-direction:row; flex-wrap:wrap; gap:4px 12px; }
   .account-header-actions > a { font-size:9px; }
   .auth-card { padding:26px 20px 24px; }
+  .signup-progress { gap:5px; font-size:10px; letter-spacing:.025em; }
+  .progress-step { gap:4px; white-space:normal; font-size:10px; }
+  .progress-step > span { width:19px; height:19px; flex:0 0 19px; font-size:10px; }
+  .progress-line { min-width:8px; }
+  .signup-methods label { flex-basis:100%; }
+  .auth-switch { display:flex; flex-wrap:wrap; gap:4px; }
   .auth-logo { width:62px; height:62px; margin-bottom:14px; border-radius:15px; }
   .account-footer { align-items:flex-start; flex-direction:column; gap:11px; }
   .account-footer > div { flex-wrap:wrap; gap:14px; }
+}
+@media(max-width:360px) {
+  .auth-card { padding:22px 14px 20px; }
+  .account-header { padding-inline:12px; }
+  .account-brand { min-width:0; }
+  .account-brand > span { overflow-wrap:anywhere; }
+  .signup-progress { align-items:flex-start; }
+  .progress-step { align-items:flex-start; flex-direction:column; text-align:center; }
+  .progress-line { margin-top:9px; }
 }
 @media(prefers-reduced-motion:reduce) {
   .auth-input-wrap, .auth-submit { transition:none; }

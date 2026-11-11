@@ -72,8 +72,8 @@
             </label>
             <label class="auth-field phone-field">
               <span>MOBILE NUMBER</span>
-              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">call</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" pattern="[+]?[0-9() .-]{7,20}" placeholder="+63 9XX XXX XXXX" /></span>
-              <small>Use an international format, for example +63 9XX XXX XXXX.</small>
+              <span class="auth-input-wrap"><span class="material-symbols-outlined" aria-hidden="true">call</span><span class="phone-prefix" aria-hidden="true">+63</span><input name="phone" type="tel" autocomplete="tel-national" inputmode="numeric" pattern="[0-9() .-]{10,16}" placeholder="9XX XXX XXXX" /></span>
+              <small>Enter your Philippine mobile number after +63 (for example, 917 123 4567).</small>
             </label>
             <label class="auth-field password-field">
               <span>PASSWORD</span>

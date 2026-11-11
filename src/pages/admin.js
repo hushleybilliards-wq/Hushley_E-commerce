@@ -352,3 +352,28 @@ document.addEventListener('click', async (event) => {
     if (error) say(failureMessage(error, 'Category update'), 'error'); else { say('Category updated.', 'success'); await Promise.all([loadCategories(), loadProducts()]); }
   }
 });
+const adminTabs = [...document.querySelectorAll('.admin-sidebar nav a[href^="#"]')];
+const adminViews = {
+  overview: [$('.admin-metrics'), $('.sales-chart-section')],
+  orders: [$('#orders')],
+  products: [$('#products')],
+  inventory: [$('#inventory')],
+};
+function showAdminView(view, updateHash = false) {
+  if (!adminViews[view]) view = 'overview';
+  for (const [name, panels] of Object.entries(adminViews)) {
+    const active = name === view;
+    panels.forEach((panel) => { panel.hidden = !active; panel.classList.toggle('view-enter', active); });
+  }
+  adminTabs.forEach((tab) => {
+    const active = tab.hash === `#${view}`;
+    tab.classList.toggle('selected', active);
+    if (active) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
+  });
+  if (updateHash && location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
+}
+adminTabs.forEach((tab) => tab.addEventListener('click', (event) => {
+  event.preventDefault(); showAdminView(tab.hash.slice(1), true); window.scrollTo({ top: 0, behavior: 'smooth' });
+}));
+window.addEventListener('hashchange', () => showAdminView(location.hash.slice(1)));
+showAdminView(location.hash.slice(1) || 'overview');
