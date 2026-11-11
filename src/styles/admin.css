@@ -420,3 +420,19 @@
 .catalog-product-details .catalog-product-number{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap}
 .catalog-product-head .catalog-row-actions{grid-column:3;grid-row:1;align-self:start;flex-direction:row}
 @media(max-width:480px){.catalog-product-head{grid-template-columns:64px minmax(0,1fr) max-content;gap:.55rem}.catalog-product-image{width:64px;height:64px}.catalog-product-details{grid-column:2;grid-row:1}.catalog-product-head .catalog-row-actions{grid-column:3;grid-row:1}}
+/* Product rows occupy the available catalog width, independent of name length. */
+#products > .admin-table-wrap.product-list{width:100%;max-width:100%}
+#products > .admin-table-wrap.product-list table{display:table;table-layout:fixed;width:100%;min-width:0}
+#products > .admin-table-wrap.product-list tbody{display:table-row-group;width:100%}
+#products > .admin-table-wrap.product-list tbody tr{display:table-row}
+#products > .admin-table-wrap.product-list tbody td{display:table-cell;width:100%}
+#products .manage-card{box-sizing:border-box;width:100%;min-width:0}
+.catalog-product-details,.catalog-product-name{min-width:0}.catalog-product-name strong{overflow-wrap:anywhere}
+/* Three equal product cards across on desktop. */
+#products > .admin-table-wrap.product-list table{display:block;width:100%}
+#products > .admin-table-wrap.product-list tbody{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;width:100%}
+#products > .admin-table-wrap.product-list tbody tr{display:block;min-width:0;width:100%}
+#products > .admin-table-wrap.product-list tbody td{display:block;width:100%;padding:0}
+#products > .admin-table-wrap.product-list .manage-card{height:100%;min-width:0}
+@media(max-width:1100px){#products > .admin-table-wrap.product-list tbody{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#products > .admin-table-wrap.product-list tbody{grid-template-columns:1fr}}
