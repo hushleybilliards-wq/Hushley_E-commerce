@@ -333,7 +333,7 @@ $('#export-payments').addEventListener('click', async (event) => {
 });
 
 
-$('#admin-sign-out').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/account.html'; });
+$('#admin-sign-out').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/account'; });
 $('#reload-orders').addEventListener('click', loadOrders);
 $('#reload-queue')?.addEventListener('click', loadOrders);
 $('#order-search').addEventListener('input', renderOrders);

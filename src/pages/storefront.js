@@ -243,7 +243,7 @@ grid.addEventListener('click', (event) => {
   }
   if (event.target.closest('[data-product-back]')) { event.preventDefault(); history.pushState({}, '', '/'); showProductPage(null); return; }
   const buyNow = event.target.closest('[data-buy-now]');
-  if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'))) { window.location.href = '/checkout.html'; return; }
+  if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'))) { window.location.href = '/checkout'; return; }
   const add = event.target.closest('[data-add]'); if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
   const save = event.target.closest('[data-save]');
   if (save) {
@@ -260,7 +260,7 @@ document.querySelector('#product-page').addEventListener('click', (event) => {
   const add = event.target.closest('[data-add]');
   if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
   const buy = event.target.closest('[data-buy-now]');
-  if (buy && addProduct(buy.dataset.buyNow, buy.closest('[data-product-card]'))) window.location.href = '/checkout.html';
+  if (buy && addProduct(buy.dataset.buyNow, buy.closest('[data-product-card]'))) window.location.href = '/checkout';
 });
 window.addEventListener('popstate', () => {
   const id = new URLSearchParams(location.search).get('product');
@@ -293,7 +293,7 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault(); document.querySelector('#catalog-search').focus();
   }
 });
-document.querySelector('.checkout-button').addEventListener('click', () => { if (isAdminSession) { showToast('Admin accounts cannot place orders'); return; } window.location.href = '/checkout.html'; });
+document.querySelector('.checkout-button').addEventListener('click', () => { if (isAdminSession) { showToast('Admin accounts cannot place orders'); return; } window.location.href = '/checkout'; });
 categoryTrack?.addEventListener('click', (event) => {
   const card = event.target.closest('[data-category-id]');
   if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);

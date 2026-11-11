@@ -13,7 +13,7 @@ Build and maintain the Hushley Billiard Accessories online store. This is an exi
 - Backend: Supabase PostgreSQL, Auth, Storage, Row Level Security (RLS), and SQL functions/RPCs.
 - Source control: existing GitHub repository.
 - Hosting: existing Vercel deployment.
-- Root HTML entry points and URLs: `index.html`, `account.html`, `checkout.html`, and `admin.html`.
+- Root HTML entry points: `index.html`, `account.html`, `checkout.html`, and `admin.html`. On Vercel, use the clean public routes `/`, `/account`, `/checkout`, and `/admin`; `vercel.json` rewrites these routes to the existing HTML entry points and redirects legacy `.html` page URLs.
 - `src/pages/`: storefront, account, checkout, and admin page behavior.
 - `src/styles/`: storefront and shared subpage styles.
 - `src/lib/supabase.js`: browser Supabase client. It must use publishable credentials only.
@@ -34,7 +34,7 @@ Use these as the general visual and UX direction across the storefront, product 
 
 The reference contains placeholder or unconfirmed commercial claims. Treat it as visual guidance, not the source of business truth. In particular, do not copy claims about zero-COD/prepaid protocols, same-day dispatch, LBC/DHL availability, live tracking, warranties, certifications, or product performance unless the owner confirms them. The confirmed payment, courier, and shipping rules elsewhere in this file take precedence. Replace the screenshot's placeholder logo/image blocks and sample products with approved brand assets and catalog data when available.
 
-Preserve the current root page URLs unless a routing change is intentional and all links/deployment behavior are updated with it.
+Preserve the clean public routes (`/`, `/account`, `/checkout`, and `/admin`) and their Vercel rewrites. When routing changes, update all links, Auth callback URLs, and deployment behavior together.
 
 ## Confirmed product requirements
 

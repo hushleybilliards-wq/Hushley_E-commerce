@@ -1,0 +1,12 @@
+{
+  "redirects": [
+    { "source": "/account.html", "destination": "/account", "permanent": true },
+    { "source": "/checkout.html", "destination": "/checkout", "permanent": true },
+    { "source": "/admin.html", "destination": "/admin", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/account", "destination": "/account.html" },
+    { "source": "/checkout", "destination": "/checkout.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ]
+}

@@ -40,10 +40,10 @@ function authErrorMessage(error) {
 function redirectAfterAuthentication(user) {
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
-  if (next === '/checkout.html') { location.replace('/checkout.html'); return; }
-  if (next === '/admin.html' && user?.app_metadata?.role === 'admin') { location.replace('/admin.html'); return; }
-  if (params.has('profile') && user?.app_metadata?.role === 'admin') { location.replace('/account.html?profile=1'); return; }
-  location.replace(user?.app_metadata?.role === 'admin' ? '/admin.html' : '/');
+  if (next === '/checkout') { location.replace('/checkout'); return; }
+  if (next === '/admin' && user?.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
+  if (params.has('profile') && user?.app_metadata?.role === 'admin') { location.replace('/account?profile=1'); return; }
+  location.replace(user?.app_metadata?.role === 'admin' ? '/admin' : '/');
 }
 const orderNotice = document.querySelector('#order-notice');
 const connection = document.querySelector('#connection-state');
@@ -163,8 +163,8 @@ async function showAccount(user) {
   currentUser = user;
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
-  if (next === '/checkout.html' && mode !== 'recovery') { location.replace('/checkout.html'); return; }
-  if (user.app_metadata?.role === 'admin' && next === '/admin.html') { location.replace('/admin.html'); return; }
+  if (next === '/checkout' && mode !== 'recovery') { location.replace('/checkout'); return; }
+  if (user.app_metadata?.role === 'admin' && next === '/admin') { location.replace('/admin'); return; }
   authCard.hidden = true;
   accountPanel.hidden = false;
   setCustomerView(params.has('placed') ? 'payment' : location.hash === '#payment' ? 'payment' : location.hash === '#orders' ? 'orders' : location.hash === '#addresses' ? 'addresses' : 'account');
@@ -463,7 +463,7 @@ document.querySelector('#forgot-password').addEventListener('click', async () =>
   const identifier = form.elements.identifier.value.trim();
   if (!identifier || !identifier.includes('@')) return say('Password recovery uses your account email. Enter an email address; phone-only accounts need a linked email to reset here.', 'error');
   const email = identifier.toLowerCase();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/account.html?recovery=1` });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/account?recovery=1` });
   if (error) return say(authErrorMessage(error), 'error');
   recoveryEmail = email;
   recoveryStage = 2;
@@ -602,7 +602,7 @@ document.querySelector('#resend-signup-code').addEventListener('click', async (e
   button.textContent = 'SENDING…';
   try {
       if (mode === 'recovery') {
-        const response = await supabase.auth.resetPasswordForEmail(recoveryEmail, { redirectTo: `${location.origin}/account.html?recovery=1` });
+        const response = await supabase.auth.resetPasswordForEmail(recoveryEmail, { redirectTo: `${location.origin}/account?recovery=1` });
         if (response.error) throw response.error;
         say('If an account exists for that email, a new password reset code is on the way.', 'success');
       } else {

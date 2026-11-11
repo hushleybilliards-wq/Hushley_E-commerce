@@ -315,7 +315,7 @@ form.addEventListener('submit', async (event) => {
       else { const result = await supabase.from('profiles').update({ default_address: saved }).eq('id', user.id).select('id').maybeSingle(); addressSaveFailed = !!result.error || !result.data; }
       } catch { addressSaveFailed = true; }
     }
-    window.location.href = `/account.html?placed=${encodeURIComponent(orderId)}${addressSaveFailed ? '&address_save=failed' : ''}`;
+    window.location.href = `/account?placed=${encodeURIComponent(orderId)}${addressSaveFailed ? '&address_save=failed' : ''}`;
   } catch (error) {
     const detail = error.message || 'We could not place your order.';
     status.textContent = /permission|row-level|not authorized/i.test(detail) ? 'Access was denied. Your session may have expired; sign in again and retry.' : /expired|jwt/i.test(detail) ? 'Your session expired. Sign in again and retry checkout.' : `${detail} You can review the details and retry.`;

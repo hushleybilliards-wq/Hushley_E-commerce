@@ -41,7 +41,9 @@ This repository's local Supabase configuration currently has email confirmations
 └── public/          # Future static assets copied directly into the build
 ```
 
-HTML files stay at the repository root so the existing URLs (`/account.html`, `/checkout.html`, and `/admin.html`) remain stable. Keep page-specific UI behavior in `src/pages/`, shared browser-safe integrations in `src/lib/`, and all schema/security changes in versioned Supabase migrations. Server secrets and privileged operations belong in Supabase Edge Functions, never in `VITE_*` variables.
+HTML files stay at the repository root as Vite build entries. The Vercel deployment exposes clean routes (`/account`, `/checkout`, and `/admin`) through `vercel.json`; legacy `.html` URLs redirect to those routes. Keep page-specific UI behavior in `src/pages/`, shared browser-safe integrations in `src/lib/`, and all schema/security changes in versioned Supabase migrations. Server secrets and privileged operations belong in Supabase Edge Functions, never in `VITE_*` variables.
+
+When enabling password recovery on a custom Vercel domain, add `https://YOUR_DOMAIN/account` to Supabase **Authentication → URL Configuration → Redirect URLs**. Vercel rewrites serve the existing HTML entry points behind the clean paths; no HTML or page behavior changes are required.
 
 ## Recommended next steps
 
@@ -53,7 +55,7 @@ The owner already has Supabase, GitHub and Vercel resources. Use those existing 
 2. Configure Auth email confirmation and redirect URLs for the local origin and the eventual storefront domain.
 3. The three current migrations have been applied to Supabase production and verified. Do not reset production. For future changes, review schema/RLS impact, use a new versioned migration, inspect `npx supabase migration list --remote` and `npx supabase db push --remote --dry-run`, then apply only to the linked intended project. See [the project checklist](PROJECT_CHECKLIST.md) and [database rollout runbook](supabase/DATABASE_ROLLOUT.md).
 
-4. Create an administrator account through `/account.html`, confirm its email, then have the project owner assign the trusted app metadata role in the Supabase SQL editor:
+4. Create an administrator account through `/account`, confirm its email, then have the project owner assign the trusted app metadata role in the Supabase SQL editor:
 
    ```sql
    update auth.users
