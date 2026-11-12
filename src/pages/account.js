@@ -41,10 +41,9 @@ function authErrorMessage(error) {
 function redirectAfterAuthentication(user) {
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
+  if (user?.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
   if (next === '/checkout') { location.replace('/checkout'); return; }
-  if (next === '/admin' && user?.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
-  if (params.has('profile') && user?.app_metadata?.role === 'admin') { location.replace('/account?profile=1'); return; }
-  location.replace(user?.app_metadata?.role === 'admin' ? '/admin' : '/');
+  location.replace('/');
 }
 const orderNotice = document.querySelector('#order-notice');
 const connection = document.querySelector('#connection-state');
@@ -151,6 +150,8 @@ function updateMode() {
   document.querySelector('#switch-mode').disabled = otpVisible;
 }
 async function showAccount(user) {
+  if (mode === 'recovery') return;
+  if (user.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
   if (user.user_metadata?.signup_incomplete === true) {
     verifiedSignupUser = user;
     mode = 'signup'; signupStage = 2;
@@ -165,7 +166,6 @@ async function showAccount(user) {
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
   if (next === '/checkout' && mode !== 'recovery') { location.replace('/checkout'); return; }
-  if (user.app_metadata?.role === 'admin' && next === '/admin') { location.replace('/admin'); return; }
   authCard.hidden = true;
   accountPanel.hidden = false;
   setCustomerView(params.has('placed') ? 'payment' : location.hash === '#payment' ? 'payment' : location.hash === '#orders' ? 'orders' : location.hash === '#addresses' ? 'addresses' : 'account');

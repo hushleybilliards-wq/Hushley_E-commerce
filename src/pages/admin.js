@@ -809,7 +809,7 @@ async function refreshNotifications() {
       ...customers.data.map((customer) => ({ key: `customer:${customer.id}`, type: 'customers', time: Date.parse(customer.created_at), label: `New customer · ${customer.full_name || 'Name not provided'}` })),
     ].filter((event) => Number.isFinite(event.time)).sort((a, b) => b.time - a.time);
     const newEvents = notificationEvents.filter((event) => !priorKeys.has(event.key));
-    if (notificationBaselineReady && newEvents.length) notifyActivity(newEvents.length === 1 ? newEvents[0].label : `${newEvents.length} new updates. Open notifications to see them.`, 'info');
+    if (notificationBaselineReady && newEvents.length) notifyActivity(newEvents.length === 1 ? newEvents[0].label : `${newEvents.length} new updates.`, 'info');
     notificationBaselineReady = true;
     renderNotifications();
   } catch { renderNotifications('Activity could not be refreshed.'); }

@@ -398,7 +398,7 @@
 
 /* Clock and activity notifications. */
 .clock-wrap{display:grid;gap:.1rem;text-align:right;line-height:1.2}.clock-wrap time{color:var(--ui-text);font-variant-numeric:tabular-nums;white-space:nowrap}
-.notification-wrap{position:relative}.admin-page .notification-toggle{position:relative;display:grid;place-items:center;width:38px;height:38px;padding:0;background:var(--ui-surface);color:var(--ui-text);border:1px solid var(--ui-border);border-radius:6px}.notification-toggle .material-symbols-outlined{font-size:21px}
+.notification-wrap{position:relative}.admin-page .notification-toggle{position:relative;display:grid;place-items:center;width:38px;height:38px;padding:0;background:var(--ui-surface);color:var(--ui-primary);border:1px solid var(--ui-border);border-radius:6px}.notification-toggle .material-symbols-outlined{font-size:21px}
 .notification-count,.nav-activity-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--ui-gold);color:#241b00!important;font-size:11px!important;font-weight:700!important;line-height:1!important}
 .notification-count{position:absolute;top:-5px;right:-5px}.admin-sidebar nav .nav-activity-count{margin-left:auto;flex:none}
 .notification-panel{position:absolute;right:0;top:calc(100% + .6rem);z-index:50;width:min(360px,calc(100vw - 2rem));max-height:min(65dvh,480px);overflow:auto;padding:.9rem;background:#1a1d22;border:1px solid var(--ui-border-strong);border-radius:8px;box-shadow:0 16px 45px #000a;white-space:normal}

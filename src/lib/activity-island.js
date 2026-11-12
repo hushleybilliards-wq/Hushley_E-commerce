@@ -15,6 +15,40 @@ announcement.className = 'activity-island-announcement';
 announcement.setAttribute('role', 'status'); announcement.setAttribute('aria-live', 'polite');
 document.body.append(announcement);
 let hideTimer;
+// Keep the full instructions in the page while using concise notification copy.
+const shortMessages = new Map([
+  ['Connection restored. The dashboard will update automatically.', 'Back online. Dashboard updates resumed.'],
+  ['Connection restored. Your orders will update automatically.', 'Back online. Order updates resumed.'],
+  ['Automatic updates are temporarily unavailable. Your existing data is still shown.', 'Updates unavailable. Showing existing data.'],
+  ['Could not update the catalog. We will try again.', 'Catalog update failed. Retrying.'],
+  ['Could not update your orders. We will try again.', 'Order update failed. Retrying.'],
+  ['Your orders have been updated.', 'Orders updated.'],
+  ['You are offline. Reconnect to sign in, load orders, or upload payment proof.', 'You are offline. Reconnect to continue.'],
+  ['You are offline. Reconnect before placing your order; your cart is saved on this device.', 'You are offline. Reconnect to order.'],
+  ['Your session ended. Sign in again to access your account.', 'Session ended. Sign in again.'],
+  ['Your email is verified. Complete your account details.', 'Email verified. Complete your details.'],
+  ['Email verified. Complete your account details.', 'Email verified. Complete your details.'],
+  ['Code sent. Verify your email to continue.', 'Code sent. Check your email.'],
+  ['If an account exists for that email, a password reset code is on the way.', 'If the account exists, a reset code is on its way.'],
+  ['If an account exists for that email, a new password reset code is on the way.', 'If the account exists, a new reset code is on its way.'],
+  ['Check the highlighted details and try again.', 'Check the highlighted fields.'],
+  ['Make sure both password fields match.', 'Passwords do not match.'],
+  ['Enter a valid mobile number so the shop can contact you about delivery.', 'Enter a valid mobile number.'],
+  ['Product is unavailable. Refresh the catalog.', 'Product unavailable. Refresh the catalog.'],
+  ['No payment proof is available for this order.', 'No payment proof for this order.'],
+  ['This product has reserved stock. Complete or cancel its orders before deleting it.', 'Reserved stock remains. Complete or cancel its orders first.'],
+  ['This product has inventory history and cannot be deleted. Unpublish it instead.', 'Product has inventory history. Unpublish it instead.'],
+  ['Payment manually approved and inventory updated.', 'Payment approved. Inventory updated.'],
+  ['Payment proof rejected and stock hold released.', 'Payment rejected. Stock released.'],
+  ['Shipping details saved. Contact and payment are handled separately.', 'Shipping saved. Arrange payment separately.'],
+  ['Shipping quote confirmed. The order total follows the stored quote.', 'Shipping quote confirmed.'],
+  ['Stock must be a whole number and cannot be below reserved stock.', 'Enter a whole number at or above reserved stock.'],
+  ['Could not save your address. Please try again.', 'Address not saved. Try again.'],
+  ['Address choices could not be loaded. Your saved address remains available.', 'Address choices unavailable. Your saved address is still available.'],
+  ['Your saved address could not be fully loaded. Please review the address fields.', 'Review your saved address details.'],
+  ['Saved address is unavailable. Please enter your delivery details.', 'Saved address unavailable. Enter delivery details.'],
+  ['This is taking longer than usual. Keep this page open while we finish placing your order.', 'Order is taking longer. Keep this page open.'],
+]);
 function category(node, text) {
   const kind = (node.dataset.kind || '').toLowerCase();
   if (/^(saving|submitting|placing|checking|sending|loading|uploading|confirming|reviewing|deleting|refreshing)\b/i.test(text)) return 'pending';
@@ -27,6 +61,7 @@ function category(node, text) {
 }
 function showActivity(text, kind) {
   clearTimeout(hideTimer);
+  text = shortMessages.get(text) || text;
   island.dataset.kind = kind;
   icon.textContent = ({ success: '✓', warning: '!', pending: '…', info: 'i' })[kind];
   title.textContent = ({ success: 'Done', warning: 'Attention', pending: 'Working', info: 'Update' })[kind];
@@ -38,7 +73,7 @@ function showActivity(text, kind) {
 export function notifyActivity(text, kind = 'info') {
   if (!text) return;
   showActivity(text, kind);
-  announcement.textContent = text;
+  announcement.textContent = shortMessages.get(text) || text;
 }
 const observer = new MutationObserver((records) => {
   const changed = new Set();

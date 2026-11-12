@@ -175,7 +175,7 @@ function updateCart() {
 function addProduct(id, card, buyNow = false) {
   if (isAdminSession) { showToast('Admin accounts cannot place orders'); return false; }
   const product = products.find((item) => item.id === id);
-  if (!product || product.available_count === 0) { showToast('THIS ITEM IS OUT OF STOCK'); return false; }
+  if (!product || product.available_count === 0) { showToast('Out of stock'); return false; }
   const selectors = [...card.querySelectorAll('[data-option-name]')];
   const missing = selectors.find((selector) => selector.required && !selector.value);
   const error = card.querySelector('.product-option-error');
@@ -192,7 +192,7 @@ function addProduct(id, card, buyNow = false) {
   const current = cart.get(key);
   cart.set(key, { product, quantity: (current?.quantity || 0) + 1, selected_options });
   selectedCart.add(key);
-  updateCart(); showToast(`${product.name} ADDED TO CART`); openDrawer(); return true;
+  updateCart(); showToast('Added to cart'); openDrawer(); return true;
 }
 function showProductPage(product) {
   const page = document.querySelector('#product-page');
@@ -279,7 +279,7 @@ grid.addEventListener('click', (event) => {
     const id = save.dataset.save;
     if (saved.has(id)) saved.delete(id); else saved.add(id);
     localStorage.setItem('hushley-saved', JSON.stringify([...saved]));
-    renderProducts(); showToast(saved.has(id) ? 'SAVED FOR LATER' : 'REMOVED FROM SAVED ITEMS');
+    renderProducts(); showToast(saved.has(id) ? 'Saved for later' : 'Removed from saved items');
   }
   if (event.target.closest('[data-clear-search]')) { document.querySelector('#catalog-search').value = ''; searchTerm = ''; renderProducts(); document.querySelector('#catalog-search').focus(); }
   if (event.target.closest('[data-retry]')) loadCatalog();
@@ -302,11 +302,11 @@ grid.addEventListener('change', (event) => {
 });
 document.querySelector('.cart-items').addEventListener('click', (event) => {
   const remove = event.target.closest('[data-remove]');
-  if (remove) { cart.delete(remove.dataset.remove); updateCart(); showToast('ITEM REMOVED FROM CART'); return; }
+  if (remove) { cart.delete(remove.dataset.remove); updateCart(); showToast('Removed from cart'); return; }
   const button = event.target.closest('[data-qty]'); if (!button) return;
   const entry = cart.get(button.dataset.qty); if (!entry) return; entry.quantity += Number(button.dataset.delta);
-  if (entry.quantity <= 0) { cart.delete(button.dataset.qty); updateCart(); showToast('ITEM REMOVED FROM CART'); }
-  else { updateCart(); showToast('CART QUANTITY UPDATED'); }
+  if (entry.quantity <= 0) { cart.delete(button.dataset.qty); updateCart(); showToast('Removed from cart'); }
+  else { updateCart(); showToast('Cart updated'); }
 });
 document.querySelector('.cart-items').addEventListener('change', (event) => {
   const input = event.target.closest('[data-select]');
@@ -339,13 +339,18 @@ categoryTrack?.addEventListener('click', (event) => {
   const card = event.target.closest('[data-category-id]');
   if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);
 });
-document.querySelector('.menu-toggle').addEventListener('click', (event) => {
-  const nav = document.querySelector('.main-nav'); const opened = nav.classList.toggle('open');
-  event.currentTarget.setAttribute('aria-expanded', String(opened));
-});
+const menuToggle = document.querySelector('.menu-toggle');
+const mainNavigation = document.querySelector('.main-nav');
+function setMenuOpen(open) {
+  mainNavigation.classList.toggle('open', open);
+  menuToggle.setAttribute('aria-expanded', String(open));
+  menuToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+}
+menuToggle.addEventListener('click', () => setMenuOpen(!mainNavigation.classList.contains('open')));
 document.querySelectorAll('.main-nav a').forEach((link) => link.addEventListener('click', () => {
-  document.querySelector('.main-nav').classList.remove('open'); document.querySelector('.menu-toggle').setAttribute('aria-expanded', 'false');
+  setMenuOpen(false);
 }));
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && mainNavigation.classList.contains('open')) { setMenuOpen(false); menuToggle.focus(); } });
 window.addEventListener('offline', () => setStatus('offline', '<span class="material-symbols-outlined" aria-hidden="true">wifi_off</span><span>You are offline. Your cart is saved on this device.</span>'));
 window.addEventListener('online', () => { setStatus('reconnected', '<span class="material-symbols-outlined" aria-hidden="true">wifi</span><span>Connection restored.</span>'); setTimeout(() => { if (navigator.onLine) { setStatus('', ''); if (isSupabaseConfigured) { if (catalogSnapshot) refreshCatalogInBackground(); else loadCatalog(); } } }, 2200); });
 document.querySelector('#year').textContent = new Date().getFullYear();

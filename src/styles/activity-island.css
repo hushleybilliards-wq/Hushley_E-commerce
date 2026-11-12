@@ -1,6 +1,7 @@
 .activity-island{position:fixed;z-index:2147483647;top:max(14px,env(safe-area-inset-top));left:50%;right:auto;bottom:auto;margin:0;width:max-content;max-width:min(500px,calc(100vw - 28px));box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:10px 16px;border:1px solid #59636a;border-radius:22px;background:#171b20;color:#f8fafc;box-shadow:0 12px 35px #0009;opacity:0;transform:translate(-50%,-12px) scale(.96);pointer-events:none;transition:opacity 180ms ease,transform 220ms cubic-bezier(.2,.75,.25,1)}
 .activity-island.is-visible{opacity:1;transform:translate(-50%,0) scale(1)}
 .activity-island-icon{display:grid;place-items:center;flex:0 0 26px;width:26px;height:26px;border-radius:50%;font:700 16px system-ui!important;background:#45535e;color:white}
+.activity-island[data-kind="info"] .activity-island-icon{background:#4edea3;color:#003824}
 .activity-island-content{display:grid;gap:2px;min-width:0;line-height:1.35}.activity-island-content strong{font:700 12px system-ui!important}.activity-island-content>span{font:400 13px/1.4 system-ui!important;overflow-wrap:anywhere}
 .activity-island[data-kind="success"]{border-color:#318763;background:#102e23}.activity-island[data-kind="success"] .activity-island-icon{background:#4edea3;color:#003824}
 .activity-island[data-kind="warning"]{border-color:#df6666;background:#4b1e24}.activity-island[data-kind="warning"] .activity-island-icon{background:#ff9c9c;color:#4b1010}

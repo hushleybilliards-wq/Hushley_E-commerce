@@ -135,6 +135,7 @@
 @media(max-width:520px){.hero-category-card-name{font-size:12px;line-height:16px}.hero-category-card{padding-inline:12px}}
 .admin-dashboard-link{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border:1px solid rgba(78,222,163,.45);border-radius:4px;color:#4edea3;font-size:10px;font-weight:800;letter-spacing:.05em;white-space:nowrap}.admin-dashboard-link:hover{background:rgba(78,222,163,.1)}
 .admin-dashboard-link[hidden]{display:none}
+body.admin-session .account-link{display:none!important}
 @media(max-width:600px){.admin-dashboard-link{min-height:30px;padding:0 7px;font-size:8px}}
 .cart-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .admin-session [data-add], .admin-session [data-buy-now], .admin-session .bag-button, .admin-session .checkout-button { display: none; }
@@ -196,3 +197,10 @@
 @media (hover:hover) { .product-card:hover .product-photo { transform:scale(1.07); } }
 .product-card:focus-within .product-photo { transform:scale(1.07); }
 @media (prefers-reduced-motion:reduce) { .product-card .product-photo { transition:none; } .product-card:hover .product-photo, .product-card:focus-within .product-photo { transform:none; } }
+/* On phones, the menu expands in the page flow beneath the header. */
+@media (max-width:760px) {
+  .menu-toggle { display:flex !important; flex:0 0 34px; width:34px; height:34px; flex-direction:column; justify-content:center; align-items:center; gap:5px; border:1px solid var(--ui-border); border-radius:4px; background:transparent; }
+  .main-nav { display:none !important; position:static; width:100%; min-width:0; margin:0; padding:6px 14px; overflow:visible; }
+  .main-nav.open { display:flex !important; position:static; flex-direction:column !important; align-items:stretch; gap:0; border-bottom:1px solid var(--ui-border); box-shadow:none; }
+  .main-nav.open a { display:flex; width:100%; min-height:44px; padding:10px 8px; white-space:normal; font-size:13px; }
+}
