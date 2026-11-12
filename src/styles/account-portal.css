@@ -229,8 +229,8 @@
 .proof-waiting small { color: var(--ui-text-muted); line-height: 1.5; }
 .account-shell { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 30px; align-items: start; }
 .account-sections { display: flex; flex-direction: column; gap: 4px; margin: 0; border: 0; }
-.account-sections a, .account-sections a:hover { padding: 10px 0; background: transparent; color: var(--ui-text-muted); }
-.account-sections a.selected { color: var(--ui-primary); }
+.account-sections a, .account-sections a:hover { padding: 10px 8px; border:1px solid transparent; border-radius:5px; background: transparent; color: var(--ui-text-muted); }
+.account-sections a.selected, .account-sections a.selected:hover { color:var(--ui-primary); background:rgba(78,222,163,.13); border-color:rgba(78,222,163,.45); }
 #account-profile-view[hidden], #orders[hidden], #payment-instructions[hidden], .order-filters[hidden] { display: none; }
 .proof-upload .admin-action { background: #4edea3; color: #062c20; border: 0; border-radius: 4px; padding: 10px 20px; }
 @media (max-width: 700px) { .account-shell { grid-template-columns: 1fr; gap: 14px; } .account-sections { flex-direction: row; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid var(--ui-border); } }
@@ -252,11 +252,36 @@
 .address-editor > p, .address-actions { grid-column: 1 / -1; }
 .address-actions { display: flex; gap: 10px; }
 @media (max-width: 600px) { .address-editor { grid-template-columns: 1fr; } .addresses-heading { flex-wrap: wrap; } }
-.account-nav-signout { align-self: flex-start; margin-top: 12px; padding: 10px 0; color: var(--ui-text-muted); border: 0; background: transparent; cursor: pointer; text-align: left; }
+.account-nav-signout { align-self: flex-start; margin-top: 12px; padding: 10px 9px; color: var(--ui-text-muted); border: 0; background: transparent; cursor: pointer; text-align: left; }
 .account-nav-signout:hover { color: var(--ui-primary); }
 @media (max-width: 700px) { .account-nav-signout { margin-top: 0; } }
 .account-nav-signout, .account-nav-signout:hover { color: #ff8f8f; }
 .account-nav-signout:focus-visible { outline: 2px solid #ff8f8f; outline-offset: 3px; }
+.account-mobile-signout { display:none; }
+.profile-exit { display:grid; flex:0 0 auto; place-items:center; width:40px; height:40px; padding:0; border:1px solid #ff8f8f; border-radius:5px; color:#ff9d9d; background:rgba(248,113,113,.1); font:400 28px/1 system-ui,sans-serif; }
+.profile-exit:hover { color:#fff; border-color:#ffb4b4; background:rgba(248,113,113,.22); }
+.account-content, .order-history, .addresses-view, .account-shell { min-width:0; }
+@media (max-width:700px) {
+  .account-sections { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding-bottom:12px; }
+  .account-sections a, .account-sections a:hover, .account-nav-signout { min-width:0; width:100%; min-height:42px; margin:0; padding:8px 3px; line-height:1.25; overflow-wrap:normal; }
+  .account-sections a { display:flex; align-items:center; justify-content:center; text-align:center; }
+  .account-nav-signout { display:none; }
+  .account-mobile-signout { display:block; justify-self:stretch; min-height:44px; margin-top:14px; padding:10px; border:1px solid rgba(255,143,143,.5); border-radius:5px; background:rgba(255,143,143,.08); color:#ff9d9d; font:inherit; cursor:pointer; text-align:center; }
+  .account-mobile-signout:focus-visible { outline:2px solid #ff8f8f; outline-offset:3px; }
+  .order-history-head { flex-wrap:wrap; align-items:flex-start; }
+  .order-history-head > div { min-width:0; }
+  .order-history-head button { min-height:40px; }
+  .account-identity > div, .addresses-heading > div { min-width:0; }
+  .address-editor input, .address-editor select, .customer-profile-form input { min-width:0; max-width:100%; }
+  .proof-upload input { min-width:0; max-width:100%; }
+}
+@media (max-width:480px) {
+  .profile-heading { display:grid; grid-template-columns:46px minmax(0,1fr) auto; align-items:start; gap:10px; }
+  .profile-avatar { width:46px; height:46px; }
+  .profile-heading > div { min-width:0; }
+  .profile-heading h1 { font-size:23px; }
+  .order-card-header strong, .order-tracking { overflow-wrap:anywhere; }
+}
 .customer-cancel { display: flex; justify-content: flex-end; margin-top: 14px; }
 .customer-cancel button { padding: 9px 13px; border: 1px solid #885151; border-radius: 4px; color: #ffaaaa; background: transparent; cursor: pointer; }
 .customer-cancel form { display: grid; gap: 10px; width: min(100%, 460px); padding: 14px; border: 1px solid var(--ui-border); border-radius: 5px; }
@@ -265,3 +290,6 @@
 .customer-cancel select { min-height: 40px; padding: 8px; color: var(--ui-text); background: var(--ui-surface-deep); border: 1px solid var(--ui-border-strong); }
 .customer-cancel form > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .customer-cancel small { line-height: 1.5; }
+.customer-delivery{display:flex;justify-content:flex-end;margin-top:14px}
+.customer-delivery button{padding:9px 13px;border:1px solid var(--ui-primary);border-radius:4px;color:var(--ui-primary-ink);background:var(--ui-primary);cursor:pointer}
+.customer-delivery button:disabled{opacity:.6;cursor:wait}

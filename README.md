@@ -67,9 +67,17 @@ The owner already has Supabase, GitHub and Vercel resources. Use those existing 
 
 ## Current scope
 
+While a page is open, the storefront catalog, customer order history and admin dashboard check for updates approximately every 30 seconds. Background refresh pauses during relevant edits or open dialogs; it does not reload the browser page. Updates also resume when the page becomes visible or the connection returns.
+
+Customer order screens use All, To Pay, Shipped, Delivered and Cancelled filters. A locally added delivery-confirmation RPC allows an owner to mark their shipped order received; the migration must be reviewed and applied before that action can work against a hosted database. See [the schema review](supabase/SCHEMA_REVIEW.md).
+
 - Product/category catalog reads, cart, authenticated checkout, and customer order history
 - Payment proof upload to a private bucket
 - Admin order/payment review, manual shipping fee, product, stock, and inventory history screens
 - RLS policies and transactional order/payment/stock RPCs in `supabase/migrations/`
 
 The production database has the three migrations described in [supabase/SCHEMA_REVIEW.md](supabase/SCHEMA_REVIEW.md). The storefront captures configured option choices and checkout persists them; admins can maintain product options, specifications, and shipping class. Remaining launch work includes approved catalog data, Auth/domain setup, end-to-end flow checks, and publishing/deploying through the owner's existing GitHub and Vercel resources. Email/SMS notifications are not automated, and automatic payment-provider integration is not required. Do not use preview data as Hushley inventory.
+
+## GCash receiving details
+
+The `hushley_gcash_payment_details` migration adds an admin-managed GCash receiving name and number. After applying it to the intended Supabase project and deploying the updated frontend, an administrator can enter these in **Payment Verification → GCash payment details**. Signed-in customers with an eligible GCash order see the details beside the payment-proof upload under **Account → My payment**. Until both details are saved, customers are directed to contact the shop. Only enter receiving details, never a PIN, password, or OTP. Other payment methods still require the customer to contact the shop for details. Staff continue to verify payment manually.

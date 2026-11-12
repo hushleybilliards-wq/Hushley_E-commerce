@@ -63,6 +63,7 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 - Checkout requires a customer to choose GCash, MariBank, PayPal, or PNB bank transfer.
 - The customer uploads proof of payment after checkout.
 - A customer may cancel an unpaid order once, only before submitting any payment proof. Require a cancellation reason, release its reservation transactionally, and direct customers who already paid or submitted proof to contact the shop. There is no automatic refund.
+- Customers can confirm receipt of their own shipped orders; confirmation marks the order delivered for both customer and staff. The customer interface groups legacy in-transit orders under Shipped. The local delivery-confirmation migration requires review and deployment before this action is available on the hosted project.
 - Customers pay the product subtotal first and upload proof; after manual approval staff contact the customer to arrange shipping payment separately. Lalamove is paid to the rider. Existing unquoted pending orders with zero shipping and no payment proof can follow this flow; preserve other existing orders under their original terms.
 - Payment verification is manual: staff check their bank/e-wallet account and then approve or reject the proof in the admin flow. Do not describe or implement payment as automatically verified.
 - An order must not be treated as paid until staff approve the payment.

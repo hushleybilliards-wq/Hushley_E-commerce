@@ -1,6 +1,11 @@
+import { notifyActivity } from '../lib/activity-island.js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
 let products = [];
+let catalogSnapshot = null;
+let catalogBackgroundBusy = false;
+let catalogRefreshFailed = false;
+let catalogRequest = 0;
 let categoryNames = new Map();
 let activeFilter = 'All';
 let activeCategoryId = null;
@@ -14,6 +19,7 @@ function readCart() {
   catch { localStorage.removeItem('hushley-cart'); return new Map(); }
 }
 const cart = readCart();
+const selectedCart = new Set(cart.keys());
 const saved = new Set(readStore('hushley-saved'));
 const grid = document.querySelector('#product-grid');
 const drawer = document.querySelector('.cart-drawer');
@@ -157,11 +163,16 @@ function updateCart() {
   const lines = [...cart.entries()];
   document.querySelector('.empty-cart').hidden = lines.length > 0;
   document.querySelector('.cart-footer').hidden = lines.length === 0;
-  document.querySelector('.cart-items').innerHTML = lines.map(([key, { product, quantity, selected_options = {} }]) => `<div class="cart-line"><div class="cart-thumb">${cartPhoto(product)}</div><div class="cart-info"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category === 'Cues' ? 'Cues & shafts' : product.category)}</p>${Object.keys(selected_options).length ? `<small class="cart-options">${formatSelectedOptions(selected_options)}</small>` : ''}<div class="qty-control"><button data-qty="${escapeHtml(key)}" data-delta="-1" aria-label="Remove one ${escapeHtml(product.name)}">−</button><span>${quantity}</span><button data-qty="${escapeHtml(key)}" data-delta="1" aria-label="Add one ${escapeHtml(product.name)}">+</button></div></div><div class="cart-line-end"><button type="button" class="cart-remove" data-remove="${escapeHtml(key)}" aria-label="Remove ${escapeHtml(product.name)} from cart">×</button><span class="cart-line-price">${Number.isFinite(Number(product.price)) && product.price !== undefined ? money(product.price * quantity) : 'PRICE TBD'}</span></div></div>`).join('');
-  const total = lines.reduce((sum, [, { product, quantity }]) => sum + (Number(product.price) || 0) * quantity, 0);
-  document.querySelector('.subtotal').textContent = lines.every(([, { product }]) => Number.isFinite(Number(product.price)) && product.price !== undefined) ? money(total) : 'TO BE CONFIRMED';
+  document.querySelector('.cart-items').innerHTML = lines.map(([key, { product, quantity, selected_options = {} }]) => `<div class="cart-line"><input type="checkbox" class="cart-select" data-select="${escapeHtml(key)}" aria-label="Select ${escapeHtml(product.name)}" ${selectedCart.has(key) ? 'checked' : ''}/><div class="cart-thumb">${cartPhoto(product)}</div><div class="cart-info"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.category === 'Cues' ? 'Cues & shafts' : product.category)}</p>${Object.keys(selected_options).length ? `<small class="cart-options">${formatSelectedOptions(selected_options)}</small>` : ''}<div class="qty-control"><button data-qty="${escapeHtml(key)}" data-delta="-1" aria-label="Remove one ${escapeHtml(product.name)}">−</button><span>${quantity}</span><button data-qty="${escapeHtml(key)}" data-delta="1" aria-label="Add one ${escapeHtml(product.name)}">+</button></div></div><div class="cart-line-end"><button type="button" class="cart-remove" data-remove="${escapeHtml(key)}" aria-label="Remove ${escapeHtml(product.name)} from cart">×</button><span class="cart-line-price">${Number.isFinite(Number(product.price)) && product.price !== undefined ? money(product.price * quantity) : 'PRICE TBD'}</span></div></div>`).join('');
+  const selected = lines.filter(([key]) => selectedCart.has(key));
+  const total = selected.reduce((sum, [, { product, quantity }]) => sum + (Number(product.price) || 0) * quantity, 0);
+  document.querySelector('.subtotal').textContent = selected.every(([, { product }]) => product.price != null && Number.isFinite(Number(product.price))) ? money(total) : 'TO BE CONFIRMED';
+  const all = document.querySelector('#cart-select-all');
+  all.checked = lines.length > 0 && selected.length === lines.length;
+  all.indeterminate = selected.length > 0 && selected.length < lines.length;
+  document.querySelector('.checkout-button').disabled = !selected.length;
 }
-function addProduct(id, card) {
+function addProduct(id, card, buyNow = false) {
   if (isAdminSession) { showToast('Admin accounts cannot place orders'); return false; }
   const product = products.find((item) => item.id === id);
   if (!product || product.available_count === 0) { showToast('THIS ITEM IS OUT OF STOCK'); return false; }
@@ -176,9 +187,11 @@ function addProduct(id, card) {
   }
   if (error) { error.textContent = ''; error.hidden = true; }
   const selected_options = Object.fromEntries(selectors.filter((selector) => selector.value).map((selector) => [selector.dataset.optionName, selector.value]));
+  if (buyNow) { sessionStorage.setItem('hushley-checkout', JSON.stringify({ mode: 'direct', items: [{ product, quantity: 1, selected_options }] })); return true; }
   const key = cartKey(product, selected_options);
   const current = cart.get(key);
   cart.set(key, { product, quantity: (current?.quantity || 0) + 1, selected_options });
+  selectedCart.add(key);
   updateCart(); showToast(`${product.name} ADDED TO CART`); openDrawer(); return true;
 }
 function showProductPage(product) {
@@ -191,23 +204,38 @@ function showProductPage(product) {
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 function navigateProduct(product) { history.pushState({ productId: product.id }, '', `/?product=${encodeURIComponent(product.id)}`); showProductPage(product); }
-async function loadCatalog() {
+function catalogIsBeingUsed() {
+  const productPage = document.querySelector('#product-page');
+  return drawer.classList.contains('open') || !productPage.hidden || !!document.activeElement?.closest('#product-grid, #hero-category-track') || [...document.querySelectorAll('#product-grid select[data-option-name]')].some((select) => select.value);
+}
+async function loadCatalog(options = {}) {
+  if (options.background && catalogIsBeingUsed()) return;
+  const request = ++catalogRequest;
   if (!isSupabaseConfigured) {
     renderCategoryCarousel(fallbackCategories);
     setStatus('notice', '<span class="material-symbols-outlined" aria-hidden="true">info</span><span>The product catalog is not connected. Products appear here after staff add and publish them.</span>');
     renderProducts(); updateCart(); return;
   }
-  renderSkeletons();
-  setStatus('loading', '<span class="material-symbols-outlined spin" aria-hidden="true">progress_activity</span><span>Loading the catalog…</span>');
-  let isSlow = false;
-  clearTimeout(slowTimer);
-  slowTimer = setTimeout(() => { isSlow = true; setStatus('slow', '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span><span>This is taking a little longer. Your catalog is still loading.</span>'); }, 5000);
+  if (!options.background) {
+    renderSkeletons();
+    setStatus('loading', '<span class="material-symbols-outlined spin" aria-hidden="true">progress_activity</span><span>Loading the catalog…</span>');
+    clearTimeout(slowTimer);
+    slowTimer = setTimeout(() => { setStatus('slow', '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span><span>This is taking a little longer. Your catalog is still loading.</span>'); }, 5000);
+  }
   const [productsResult, categoriesResult] = await Promise.all([
     supabase.from('products').select('id,name,category_id,description,price,stock_quantity,reserved_quantity,image_urls,is_active,options,specifications').eq('is_active', true).order('name'),
     supabase.from('categories').select('id,name').eq('is_active', true),
   ]);
-  clearTimeout(slowTimer);
+  if (!options.background) clearTimeout(slowTimer);
+  if (request !== catalogRequest || (options.background && catalogIsBeingUsed())) return;
   const { data, error } = productsResult;
+  if (options.background && (error || categoriesResult.error)) {
+    if (!catalogRefreshFailed) notifyActivity('Could not update the catalog. We will try again.', 'warning');
+    catalogRefreshFailed = true; return;
+  }
+  if (options.background) catalogRefreshFailed = false;
+  const nextSnapshot = JSON.stringify([data || [], categoriesResult.data || []]);
+  if (options.background && catalogSnapshot === nextSnapshot) return;
   renderCategoryCarousel(categoriesResult.data || [], data || []);
   if (error) {
     setStatus('error', '<span class="material-symbols-outlined" aria-hidden="true">cloud_off</span><span>We could not load the catalog.</span><button class="status-retry" data-retry>Try again</button>');
@@ -215,6 +243,7 @@ async function loadCatalog() {
     console.error('Could not load catalog:', error.message);
     return;
   }
+  catalogSnapshot = nextSnapshot;
   categoryNames = new Map((categoriesResult.data || []).map((category) => [category.id, category.name]));
   const catalogRows = data || [];
   products = catalogRows
@@ -229,7 +258,7 @@ async function loadCatalog() {
   const hiddenIncomplete = catalogRows.length - products.length;
   setStatus(hiddenIncomplete ? 'notice' : '', hiddenIncomplete ? `<span class="material-symbols-outlined" aria-hidden="true">info</span><span>${hiddenIncomplete} published product${hiddenIncomplete === 1 ? ' is' : 's are'} hidden until staff add a photo and description.</span>` : '');
   document.querySelector('.catalog-note').hidden = true;
-  renderProducts(); updateCart();
+  renderProducts(); if (!options.background) updateCart();
   const productId = new URLSearchParams(location.search).get('product');
   if (productId) showProductPage(products.find((product) => product.id === productId));
 }
@@ -243,7 +272,7 @@ grid.addEventListener('click', (event) => {
   }
   if (event.target.closest('[data-product-back]')) { event.preventDefault(); history.pushState({}, '', '/'); showProductPage(null); return; }
   const buyNow = event.target.closest('[data-buy-now]');
-  if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'))) { window.location.href = '/checkout'; return; }
+  if (buyNow && addProduct(buyNow.dataset.buyNow, buyNow.closest('[data-product-card]'), true)) { window.location.href = '/checkout'; return; }
   const add = event.target.closest('[data-add]'); if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
   const save = event.target.closest('[data-save]');
   if (save) {
@@ -260,7 +289,7 @@ document.querySelector('#product-page').addEventListener('click', (event) => {
   const add = event.target.closest('[data-add]');
   if (add) addProduct(add.dataset.add, add.closest('[data-product-card]'));
   const buy = event.target.closest('[data-buy-now]');
-  if (buy && addProduct(buy.dataset.buyNow, buy.closest('[data-product-card]'))) window.location.href = '/checkout';
+  if (buy && addProduct(buy.dataset.buyNow, buy.closest('[data-product-card]'), true)) window.location.href = '/checkout';
 });
 window.addEventListener('popstate', () => {
   const id = new URLSearchParams(location.search).get('product');
@@ -273,10 +302,22 @@ grid.addEventListener('change', (event) => {
 });
 document.querySelector('.cart-items').addEventListener('click', (event) => {
   const remove = event.target.closest('[data-remove]');
-  if (remove) { cart.delete(remove.dataset.remove); updateCart(); return; }
+  if (remove) { cart.delete(remove.dataset.remove); updateCart(); showToast('ITEM REMOVED FROM CART'); return; }
   const button = event.target.closest('[data-qty]'); if (!button) return;
   const entry = cart.get(button.dataset.qty); if (!entry) return; entry.quantity += Number(button.dataset.delta);
-  if (entry.quantity <= 0) cart.delete(button.dataset.qty); updateCart();
+  if (entry.quantity <= 0) { cart.delete(button.dataset.qty); updateCart(); showToast('ITEM REMOVED FROM CART'); }
+  else { updateCart(); showToast('CART QUANTITY UPDATED'); }
+});
+document.querySelector('.cart-items').addEventListener('change', (event) => {
+  const input = event.target.closest('[data-select]');
+  if (!input) return;
+  if (input.checked) selectedCart.add(input.dataset.select); else selectedCart.delete(input.dataset.select);
+  updateCart();
+});
+document.querySelector('#cart-select-all').addEventListener('change', (event) => {
+  selectedCart.clear();
+  if (event.target.checked) for (const key of cart.keys()) selectedCart.add(key);
+  updateCart();
 });
 document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => {
   document.querySelectorAll('.filter').forEach((filter) => { const active = filter === button; filter.classList.toggle('active', active); filter.setAttribute('aria-pressed', String(active)); });
@@ -293,7 +334,7 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault(); document.querySelector('#catalog-search').focus();
   }
 });
-document.querySelector('.checkout-button').addEventListener('click', () => { if (isAdminSession) { showToast('Admin accounts cannot place orders'); return; } window.location.href = '/checkout'; });
+document.querySelector('.checkout-button').addEventListener('click', () => { if (isAdminSession) { showToast('Admin accounts cannot place orders'); return; } const keys = [...cart.keys()].filter((key) => selectedCart.has(key)); if (!keys.length) return; sessionStorage.setItem('hushley-checkout', JSON.stringify({ mode: 'cart', keys })); window.location.href = '/checkout'; });
 categoryTrack?.addEventListener('click', (event) => {
   const card = event.target.closest('[data-category-id]');
   if (card && !card.hasAttribute('aria-hidden')) selectCategory(card.dataset.categoryId);
@@ -306,7 +347,7 @@ document.querySelectorAll('.main-nav a').forEach((link) => link.addEventListener
   document.querySelector('.main-nav').classList.remove('open'); document.querySelector('.menu-toggle').setAttribute('aria-expanded', 'false');
 }));
 window.addEventListener('offline', () => setStatus('offline', '<span class="material-symbols-outlined" aria-hidden="true">wifi_off</span><span>You are offline. Your cart is saved on this device.</span>'));
-window.addEventListener('online', () => { setStatus('reconnected', '<span class="material-symbols-outlined" aria-hidden="true">wifi</span><span>Connection restored.</span>'); setTimeout(() => { if (navigator.onLine) { setStatus('', ''); if (isSupabaseConfigured) loadCatalog(); } }, 2200); });
+window.addEventListener('online', () => { setStatus('reconnected', '<span class="material-symbols-outlined" aria-hidden="true">wifi</span><span>Connection restored.</span>'); setTimeout(() => { if (navigator.onLine) { setStatus('', ''); if (isSupabaseConfigured) { if (catalogSnapshot) refreshCatalogInBackground(); else loadCatalog(); } } }, 2200); });
 document.querySelector('#year').textContent = new Date().getFullYear();
 if (isSupabaseConfigured) {
   const syncAdminLink = (user) => { isAdminSession = user?.app_metadata?.role === 'admin'; adminDashboardLink.hidden = !isAdminSession; document.body.classList.toggle('admin-session', isAdminSession); };
@@ -316,3 +357,13 @@ if (isSupabaseConfigured) {
 }
 renderProducts(); updateCart();
 loadCatalog();
+
+async function refreshCatalogInBackground() {
+  if (!isSupabaseConfigured || !catalogSnapshot || catalogBackgroundBusy || document.hidden || !navigator.onLine || catalogIsBeingUsed()) return;
+  catalogBackgroundBusy = true;
+  try { await loadCatalog({ background: true }); }
+  catch { if (!catalogRefreshFailed) notifyActivity('Could not update the catalog. We will try again.', 'warning'); catalogRefreshFailed = true; }
+  finally { catalogBackgroundBusy = false; }
+}
+setInterval(refreshCatalogInBackground, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCatalogInBackground(); });

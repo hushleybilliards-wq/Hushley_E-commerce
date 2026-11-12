@@ -1,3 +1,4 @@
+import { notifyActivity } from '../lib/activity-island.js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -9,18 +10,29 @@ let categories = [];
 let ordersCache = [];
 let ordersLoaded = false;
 let productsCache = [];
+let productsLoaded = false;
+let productsLoadFailed = false;
+let ordersLoadFailed = false;
 let catalogCategory = '';
 let profilesCache = [];
 let profilesLoaded = false;
 let selectedOrderId = null;
+let overviewPreviewVersion = 0;
+let currentAdminView = 'overview';
 let authorized = false;
 let notificationUserId = null;
 let notificationEvents = [];
 let notificationRefreshing = false;
+let adminAutoRefreshing = false;
+let adminOrderRequest = 0;
+let adminProductRequest = 0;
+const backgroundFailures = new Set();
+let notificationBaselineReady = false;
 const activityReadFallback = {};
 const currency = (amount) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(amount || 0));
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 const safeSlug = (value) => value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const orderStatusLabel = (status) => ({ pending_payment: 'To pay', payment_verification: 'Payment under review', payment_rejected: 'Payment needs attention', payment_confirmed: 'Preparing', processing: 'Preparing', ready_to_ship: 'Preparing', shipped: 'Shipped', in_transit: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' }[status] || String(status || '').replaceAll('_', ' '));
 const shippingClasses = new Map([['small_items', 'Small items'], ['cue', 'Billiard cue'], ['ball_set', 'Billiard ball set']]);
 async function uploadProductImage(image) {
   if (!image) return null;
@@ -96,7 +108,7 @@ function setConnection(online, reconnected = false) {
   if (!indicator) return;
   indicator.textContent = online ? (reconnected ? 'RECONNECTED' : 'ONLINE') : 'OFFLINE';
   indicator.dataset.state = online ? 'online' : 'offline';
-  if (reconnected) say('Connection restored. Refresh any view that failed while offline.', 'success');
+  if (reconnected) say('Connection restored. The dashboard will update automatically.', 'success');
 }
 window.addEventListener('offline', () => setConnection(false));
 window.addEventListener('online', () => setConnection(true, true));
@@ -120,7 +132,25 @@ async function fetchAll(makeQuery) {
   }
 }
 
-async function loadMetrics() {
+function adminIsEditing() {
+  if (document.querySelector('dialog[open]')) return true;
+  const host = $('#orders-body');
+  if (!host) return false;
+  if (host.contains(document.activeElement)) return true;
+  return [...host.querySelectorAll('input, select, textarea')].some((field) => {
+    if (field.type === 'checkbox') return field.checked !== field.defaultChecked;
+    if (field.tagName === 'SELECT') {
+      const defaults = [...field.options].filter((option) => option.defaultSelected);
+      return defaults.length ? !field.selectedOptions[0]?.defaultSelected : field.selectedIndex > 0;
+    }
+    return field.value !== field.defaultValue;
+  });
+}
+function backgroundFailure(key) {
+  if (!backgroundFailures.has(key)) say('Automatic updates are temporarily unavailable. Your existing data is still shown.', 'warning');
+  backgroundFailures.add(key);
+}
+async function loadMetrics(options = {}) {
   const started = Date.now();
   const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(weekStart.getDate() - 6);
   const queries = await Promise.all([
@@ -131,7 +161,8 @@ async function loadMetrics() {
     fetchAll(() => supabase.from('payments').select('id,amount,reviewed_at').eq('status', 'approved').gte('reviewed_at', weekStart.toISOString()).order('id')),
   ]);
   const error = queries.find((item) => item.error)?.error;
-  if (error) { say(failureMessage(error, 'Dashboard metrics'), 'error'); return; }
+  if (error) { if (options.background) { backgroundFailure('metrics'); return; } say(failureMessage(error, 'Dashboard metrics'), 'error'); return; }
+  backgroundFailures.delete('metrics');
   const [orders, payments, lowStock, sales, salesWeek] = queries;
   $('#metric-sales').textContent = currency((sales.data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0));
   $('#metric-orders').textContent = orders.count ?? '0';
@@ -172,44 +203,92 @@ function renderSalesChart(payments) {
   dataList.innerHTML = points.map((point) => `<li><span>${escapeHtml(point.date.toLocaleDateString('en-PH', { weekday: 'long', month: 'short', day: 'numeric' }))}</span><strong>${escapeHtml(currency(point.amount))}</strong></li>`).join('');
 }
 
-async function loadOrders() {
+async function loadOrders(options = {}) {
+  if (options.background && adminIsEditing()) return;
+  const request = ++adminOrderRequest;
   const host = $('#orders-body');
-  rowMessage(host, 7, 'Loading recent orders…');
+  if (!ordersLoaded) rowMessage(host, 7, 'Loading recent orders…');
   const started = Date.now();
-  let { data, error } = await fetchAll(() => supabase.from('orders').select('id,customer_id,order_number,customer_name,email,mobile,address_line,city,province,postal_code,country,courier,payment_method,customer_note,subtotal,total,shipping_fee,shipping_confirmed,shipping_region,shipping_quote_note,actual_shipping_fee,shipping_receipt_reference,shipping_customer_emailed_at,shipping_adjustment_note,shipping_adjustment_settled_at,shipping_adjustment_amount,payment_scope,separate_shipping_quote,separate_shipping_quote_note,separate_shipping_actual,separate_shipping_receipt,separate_shipping_contacted_at,separate_shipping_settlement_note,separate_shipping_settled_at,separate_shipping_adjustment,customer_cancel_reason,customer_cancelled_at,status,tracking_number,hold_expires_at,created_at,order_items(product_name,quantity,selected_options),payments(id,status,amount,proof_path,created_at)').order('created_at', { ascending: false }).order('id', { ascending: false }));
+  let { data, error } = await fetchAll(() => supabase.from('orders').select('id,customer_id,order_number,customer_name,email,mobile,address_line,city,province,postal_code,country,courier,payment_method,customer_note,subtotal,total,shipping_fee,shipping_confirmed,shipping_region,shipping_quote_note,actual_shipping_fee,shipping_receipt_reference,shipping_customer_emailed_at,shipping_adjustment_note,shipping_adjustment_settled_at,shipping_adjustment_amount,payment_scope,separate_shipping_quote,separate_shipping_quote_note,separate_shipping_actual,separate_shipping_receipt,separate_shipping_contacted_at,separate_shipping_settlement_note,separate_shipping_settled_at,separate_shipping_adjustment,customer_cancel_reason,customer_cancelled_at,status,tracking_number,hold_expires_at,created_at,order_items(product_id,product_name,quantity,unit_price,selected_options),payments(id,status,amount,proof_path,created_at)').order('created_at', { ascending: false }).order('id', { ascending: false }));
   if (error && /column|schema cache/i.test(error.message)) {
-    const fallback = await fetchAll(() => supabase.from('orders').select('id,customer_id,order_number,customer_name,email,mobile,address_line,city,province,postal_code,country,courier,payment_method,customer_note,subtotal,total,shipping_fee,shipping_confirmed,status,tracking_number,hold_expires_at,created_at,order_items(product_name,quantity,selected_options),payments(id,status,amount,proof_path,created_at)').order('created_at', { ascending: false }).order('id', { ascending: false }));
+    const fallback = await fetchAll(() => supabase.from('orders').select('id,customer_id,order_number,customer_name,email,mobile,address_line,city,province,postal_code,country,courier,payment_method,customer_note,subtotal,total,shipping_fee,shipping_confirmed,status,tracking_number,hold_expires_at,created_at,order_items(product_id,product_name,quantity,unit_price,selected_options),payments(id,status,amount,proof_path,created_at)').order('created_at', { ascending: false }).order('id', { ascending: false }));
     data = fallback.data; error = fallback.error;
   }
-  if (error) { ordersLoaded = false; renderCustomers(); rowMessage(host, 7, failureMessage(error, 'Orders'), 'orders'); say(failureMessage(error, 'Orders'), 'error'); return; }
-  ordersCache = data || []; ordersLoaded = true;
+  if (request !== adminOrderRequest || (options.background && adminIsEditing())) return;
+  if (error && options.background) { backgroundFailure('orders'); return; }
+  if (error) { ordersLoaded = false; ordersLoadFailed = true; renderAttention(); renderOverviewSummary(); renderCustomers(); rowMessage(host, 7, failureMessage(error, 'Orders'), 'orders'); $('#payment-queue').innerHTML = `<p class="panel-message">${escapeHtml(failureMessage(error, 'Orders'))} <button data-retry="orders">Retry</button></p>`; $('#audit-detail').textContent = 'Order details are unavailable. Retry loading orders.'; say(failureMessage(error, 'Orders'), 'error'); return; }
+  backgroundFailures.delete('orders');
+  const unchanged = ordersLoaded && JSON.stringify(ordersCache) === JSON.stringify(data || []);
+  ordersCache = data || []; ordersLoaded = true; ordersLoadFailed = false;
+  if (options.background && unchanged) return;
+  renderAttention(); renderOverviewSummary();
   if (!selectedOrderId || !ordersCache.some((order) => order.id === selectedOrderId)) selectedOrderId = ordersCache.find((order) => order.status === 'payment_verification' && order.payments?.some((payment) => payment.status === 'pending' && payment.proof_path))?.id || ordersCache[0]?.id || null;
-  renderDashboardPanels();
-  renderCustomers();
-  await renderOrders();
+  if (!unchanged) { renderDashboardPanels(); renderCustomers(); await renderOrders(); }
   if (Date.now() - started > 5000) say('Orders loaded over a slow connection.', 'warning');
+}
+
+function renderOverviewSummary() {
+  const set = (id, value) => { const el = $(id); if (el) el.textContent = value; };
+  set('#summary-orders', ordersLoaded ? ordersCache.length : '—');
+  set('#summary-payments', ordersLoaded ? ordersCache.filter((order) => order.status === 'payment_verification' && order.payments?.some((payment) => payment.status === 'pending' && payment.proof_path)).length : '—');
+  set('#summary-shipping', ordersLoaded ? ordersCache.filter((order) => ['ready_to_ship', 'shipped', 'in_transit'].includes(order.status)).length : '—');
+  set('#summary-products', productsLoaded ? productsCache.filter((product) => product.is_active).length : '—');
+  set('#summary-customers', profilesLoaded ? profilesCache.length : '—');
+}
+
+function renderAttention() {
+  const host = $('#attention-content'); if (!host) return;
+  const pending = ordersLoaded ? ordersCache.map((order) => ({ order, payment: [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] })).filter(({ order, payment }) => order.status === 'payment_verification' && payment?.status === 'pending' && payment.proof_path) : [];
+  const low = productsLoaded ? productsCache.filter((product) => product.is_active && product.stock_quantity - product.reserved_quantity <= product.low_stock_threshold).sort((a, b) => (a.stock_quantity - a.reserved_quantity) - (b.stock_quantity - b.reserved_quantity)) : [];
+  if (ordersLoaded && productsLoaded && !pending.length && !low.length) { host.innerHTML = '<p class="attention-empty"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> Nothing needs attention.</p>'; return; }
+  const reviews = ordersLoaded ? (pending.length ? `<ul>${pending.slice(0, 3).map(({ order }) => `<li><button type="button" data-select-order="${escapeHtml(order.id)}"><span><strong>${escapeHtml(order.order_number)}</strong><small>${escapeHtml(order.customer_name)} · Proof submitted</small></span><span aria-hidden="true">→</span></button></li>`).join('')}</ul>${pending.length > 3 ? '<button type="button" class="attention-more" data-attention-view="payments">View all payment reviews</button>' : ''}` : '<p class="attention-quiet">No payment proofs waiting for review.</p>') : `<p class="attention-quiet">${ordersLoadFailed ? 'Payment reviews unavailable. <button data-retry="orders">Retry</button>' : 'Loading payment reviews…'}</p>`;
+  const stock = productsLoaded ? (low.length ? `<ul>${low.slice(0, 3).map((product) => `<li><button type="button" data-attention-product="${escapeHtml(product.id)}"><span><strong>${escapeHtml(product.name)}</strong><small>${product.stock_quantity - product.reserved_quantity} available</small></span><span aria-hidden="true">→</span></button></li>`).join('')}</ul>${low.length > 3 ? '<button type="button" class="attention-more" data-attention-view="products">View inventory &amp; catalog</button>' : ''}` : '<p class="attention-quiet">No low-stock products.</p>') : `<p class="attention-quiet">${productsLoadFailed ? 'Stock information unavailable. <button data-retry="products">Retry</button>' : 'Loading stock…'}</p>`;
+  host.innerHTML = `<section class="attention-group"><h3>Payment review <span>${ordersLoaded ? pending.length : '—'}</span></h3>${reviews}</section><section class="attention-group"><h3>Low stock <span>${productsLoaded ? low.length : '—'}</span></h3>${stock}</section>`;
 }
 
 function renderDashboardPanels() {
   const queue = $('#payment-queue'); const fulfillment = $('#fulfillment-body'); const detail = $('#audit-detail');
-  if (!queue || !fulfillment || !detail) return;
+  if (!queue || !fulfillment || !detail || !ordersLoaded) return;
   const query = ($('#dashboard-search')?.value || '').trim().toLowerCase();
   const filteredOrders = ordersCache.filter((order) => !query || [order.order_number, order.customer_name, order.email, order.status, order.courier].some((value) => String(value || '').toLowerCase().includes(query)));
-  const reviewRows = filteredOrders.map((order) => ({ order, payment: [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] })).filter(({ order, payment }) => order.status === 'payment_verification' && payment?.status === 'pending' && payment.proof_path);
-  queue.innerHTML = reviewRows.length ? reviewRows.map(({ order, payment }) => `<article class="payment-queue-card ${selectedOrderId === order.id ? 'is-selected' : ''}"><button class="queue-select" data-select-order="${escapeHtml(order.id)}"><span class="queue-proof-icon material-symbols-outlined" aria-hidden="true">receipt_long</span><span class="queue-order"><strong>#${escapeHtml(order.order_number)}</strong><small>${escapeHtml(order.customer_name)} · ${escapeHtml(order.payment_method || 'Payment method not listed')}</small><small>Proof submitted ${new Date(payment.created_at).toLocaleString('en-PH')}</small></span><strong class="queue-amount">${currency(payment.amount)}</strong></button><div class="review-actions"><button type="button" data-view-proof="${escapeHtml(order.id)}">VIEW PROOF</button><button data-review="${escapeHtml(payment.id)}" data-approved="true"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> APPROVE</button><button data-review="${escapeHtml(payment.id)}" data-approved="false" aria-label="Reject payment proof">REJECT</button></div></article>`).join('') : '<p class="panel-message">No submitted payment proofs are waiting for review.</p>';
+  const overviewRows = filteredOrders.map((order) => ({ order, payment: [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] })).filter(({ order, payment }) => currentAdminView !== 'payments' || (order.status === 'payment_verification' && payment?.status === 'pending' && payment.proof_path));
+  queue.innerHTML = overviewRows.length ? overviewRows.map(({ order, payment }) => {
+    const items = (order.order_items || []).map((item) => `${escapeHtml(item.product_name)} × ${item.quantity}`).join(', ');
+    const proofStatus = payment?.proof_path ? (payment.status === 'pending' ? 'Proof awaiting review' : `Proof ${escapeHtml(payment.status)}`) : 'No proof submitted';
+    return `<article class="payment-queue-card overview-order-row"><div class="overview-order-summary"><strong>${escapeHtml(order.order_number)}</strong><span>${escapeHtml(order.customer_name)} · ${escapeHtml(orderStatusLabel(order.status))}</span><span>${items || 'No items recorded'}</span><small class="overview-proof-state ${payment?.proof_path ? 'has-proof' : ''}">${proofStatus}</small></div><strong class="overview-order-amount">${currency(payment?.amount ?? order.total)}</strong><button type="button" class="overview-view-button" data-select-order="${escapeHtml(order.id)}" aria-label="View order ${escapeHtml(order.order_number)}">VIEW</button></article>`;
+  }).join('') : `<p class="panel-message">${query ? 'No orders match your search.' : currentAdminView === 'payments' ? 'No payment proofs are waiting for review.' : 'No orders have been placed yet.'}</p>`;
   const recent = filteredOrders.slice(0, 6);
   fulfillment.innerHTML = recent.length ? recent.map((order) => {
     const payment = [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
     const items = (order.order_items || []).map((item) => `${escapeHtml(item.product_name)} × ${item.quantity}${Object.keys(item.selected_options || {}).length ? ` · ${escapeHtml(JSON.stringify(item.selected_options))}` : ''}`).join('<br>');
-    return `<tr><td><button class="order-link" data-select-order="${escapeHtml(order.id)}">#${escapeHtml(order.order_number)}</button></td><td>${escapeHtml(order.customer_name)}</td><td>${items || '—'}</td><td>${escapeHtml(order.courier || 'To confirm')}</td><td><span class="status-pill">${escapeHtml(order.status.replaceAll('_',' '))}</span></td><td>${escapeHtml(payment?.status || 'Not submitted')}</td></tr>`;
+    return `<tr><td><button class="order-link" data-select-order="${escapeHtml(order.id)}">#${escapeHtml(order.order_number)}</button></td><td>${escapeHtml(order.customer_name)}</td><td>${items || '—'}</td><td>${escapeHtml(order.courier || 'To confirm')}</td><td><span class="status-pill">${escapeHtml(orderStatusLabel(order.status))}</span></td><td>${escapeHtml(payment?.status || 'Not submitted')}</td></tr>`;
   }).join('') : '<tr><td colspan="6">No orders have been placed yet.</td></tr>';
   const telemetry = $('#equipment-telemetry');
   if (telemetry) telemetry.innerHTML = productsCache.length ? productsCache.slice().sort((a,b) => (a.stock_quantity-a.reserved_quantity)-(b.stock_quantity-b.reserved_quantity)).slice(0,5).map((product) => { const available = Math.max(0, product.stock_quantity-product.reserved_quantity); const low = available <= Number(product.low_stock_threshold || 0); const pct = Math.min(100, Math.round((available / Math.max(product.stock_quantity,1))*100)); return `<article class="telemetry-item ${low ? 'is-low' : ''}"><div><strong>${escapeHtml(product.name)}</strong><b>${available} available</b></div><small>${escapeHtml(product.sku || 'Stock level')} · ${low ? 'LOW STOCK' : 'Available'}</small><span class="stock-meter"><i style="width:${pct}%"></i></span></article>`; }).join('') : '<p>No product inventory is available.</p>';
+  if (!$('#overview-order-dialog')?.open) return;
   const order = ordersCache.find((row) => row.id === selectedOrderId);
   if (!order) { detail.textContent = 'Select an order with submitted payment proof to inspect it.'; return; }
   const payment = [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  const address = [order.address_line, order.city, order.province, order.postal_code, order.country].filter(Boolean).join(', ');
-  detail.innerHTML = `<div class="audit-customer"><span>CONSIGNEE</span><strong>${escapeHtml(order.customer_name)}</strong><small>${escapeHtml(order.mobile || 'No phone number')}</small><small>${escapeHtml(address || 'No address')}</small></div><div class="receipt-preview"><header><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span><strong>${escapeHtml(order.payment_method || 'Payment proof')}</strong><span class="status-pill">${escapeHtml(payment?.status || 'Not submitted')}</span></header><small>EXPECTED ORDER AMOUNT</small><strong class="receipt-amount">${currency(payment?.amount || 0)}</strong>${payment?.proof_path ? `<button data-view-proof="${escapeHtml(order.id)}" class="proof-preview-button"><span class="material-symbols-outlined" aria-hidden="true">image</span> OPEN PRIVATE PAYMENT PROOF</button>` : '<p>No payment proof has been submitted.</p>'}<small>Order #${escapeHtml(order.order_number)}</small></div><div class="audit-actions">${payment?.status === 'pending' && payment.proof_path ? `<button data-review="${escapeHtml(payment.id)}" data-approved="true">APPROVE PAYMENT</button><button data-review="${escapeHtml(payment.id)}" data-approved="false">REJECT PROOF</button>` : `<a href="#orders">OPEN ORDER MANAGEMENT</a>`}</div><p class="audit-reminder">Verify the transfer in the receiving bank or e-wallet before approval.</p>`;
+  const version = ++overviewPreviewVersion;
+  const items = (order.order_items || []).map((item) => {
+    const options = Object.entries(item.selected_options || {}).map(([key, value]) => `${key}: ${value}`).join(' · ');
+    const product = productsCache.find((row) => row.id === item.product_id);
+    const image = product?.image_urls?.[0];
+    return `<li class="modal-order-item">${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(item.product_name)}"/>` : '<span class="modal-order-no-image">No image</span>'}<div><strong>${escapeHtml(item.product_name)}</strong>${options ? `<small>${escapeHtml(options)}</small>` : ''}<small>${Number(item.quantity)} × ${currency(item.unit_price)} each</small></div><strong>${currency(Number(item.unit_price) * Number(item.quantity))}</strong></li>`;
+  }).join('');
+  const canReview = order.status === 'payment_verification' && payment?.status === 'pending' && payment.proof_path;
+  detail.innerHTML = `<div class="overview-selected-heading"><div><span>SELECTED ORDER</span><strong>${escapeHtml(order.order_number)}</strong><small>${escapeHtml(order.customer_name)} · ${escapeHtml(orderStatusLabel(order.status))} · ${escapeHtml(new Date(order.created_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }))}</small></div><strong>${currency(payment?.amount ?? order.total)}</strong></div><section class="overview-items"><h3>Order items</h3><ul>${items || '<li>No items recorded.</li>'}</ul><div class="modal-order-totals"><span>Product subtotal <strong>${currency(order.subtotal)}</strong></span>${order.payment_scope === 'products_only' ? `<span>Shipping arranged separately <strong>${order.separate_shipping_quote == null ? 'Not set' : currency(order.separate_shipping_quote)}</strong></span>` : `<span>Shipping <strong>${currency(order.shipping_fee)}</strong></span>`}<span>Order total <strong>${currency(order.total)}</strong></span></div></section><section class="overview-contact"><h3>Customer &amp; delivery</h3><p>${escapeHtml(order.email || 'No email')} · ${escapeHtml(order.mobile || 'No phone')}</p><p>${escapeHtml([order.address_line, order.city, order.province, order.postal_code, order.country].filter(Boolean).join(', ') || 'No address recorded')}</p><p>Courier: ${escapeHtml(order.courier || 'To confirm')} · Zone: ${escapeHtml(order.shipping_region || 'Not recorded')} · Tracking: ${escapeHtml(order.tracking_number || 'Not recorded')}</p>${order.customer_note ? `<p>Customer note: ${escapeHtml(order.customer_note)}</p>` : ''}</section><section class="overview-proof"><div class="overview-proof-heading"><h3>Payment proof</h3><span class="status-pill">${escapeHtml(payment?.status || 'Not submitted')}</span></div><p>${escapeHtml(order.payment_method || 'Payment method not listed')}</p>${payment?.proof_path ? `<div class="overview-proof-image" id="overview-proof-image"><span>Loading payment proof…</span></div><button data-view-proof="${escapeHtml(order.id)}" class="proof-preview-button">OPEN FULL PROOF</button>` : '<p class="overview-no-proof">No payment proof submitted yet.</p>'}</section>${canReview ? `<p class="audit-reminder">Check your bank or e-wallet before approving.</p><div class="audit-actions"><button data-review="${escapeHtml(payment.id)}" data-approved="true">APPROVE PAYMENT</button><button data-review="${escapeHtml(payment.id)}" data-approved="false">REJECT PROOF</button></div>` : ''}`;
+  if (payment?.proof_path) {
+    const preview = $('#overview-proof-image');
+    if (/\.pdf$/i.test(payment.proof_path)) preview.textContent = 'Older PDF proof — open it to review.';
+    else supabase.storage.from('payment-proofs').createSignedUrl(payment.proof_path, 300).then(({ data, error }) => {
+      if (version !== overviewPreviewVersion || selectedOrderId !== order.id || !preview.isConnected) return;
+      if (error || !data?.signedUrl) { preview.textContent = 'Preview unavailable. Open the proof to retry.'; return; }
+      const image = document.createElement('img'); image.alt = `Payment proof for order ${order.order_number}`;
+      image.addEventListener('error', () => { if (preview.isConnected) preview.textContent = 'Preview unavailable. Open the proof to retry.'; });
+      image.src = data.signedUrl; preview.replaceChildren(image);
+    }).catch(() => { if (version === overviewPreviewVersion && preview.isConnected) preview.textContent = 'Preview unavailable. Open the proof to retry.'; });
+  }
 
 }
 
@@ -225,8 +304,8 @@ async function renderOrders() {
     const itemDetails = (order.order_items || []).map((item) => `${escapeHtml(item.product_name)} × ${item.quantity}${Object.keys(item.selected_options || {}).length ? ` — ${escapeHtml(Object.entries(item.selected_options).map(([key, value]) => `${key}: ${value}`).join(', '))}` : ''}`).join('<br>');
     const proof = payment?.proof_path ? `<button class="proof-link" data-view-proof="${escapeHtml(order.id)}">VIEW PAYMENT PROOF</button>` : '';
     const review = payment?.status === 'pending' && order.status === 'payment_verification' ? `<div class="review-actions"><button data-review="${escapeHtml(payment.id)}" data-approved="true">APPROVE PAYMENT</button><button data-review="${escapeHtml(payment.id)}" data-approved="false">REJECT PROOF</button></div>` : '';
-    const options = ['pending_payment','payment_verification','processing','ready_to_ship','shipped','in_transit','delivered','cancelled'];
-    if (!options.includes(order.status)) options.push(order.status);
+    const currentStatus = order.status === 'in_transit' ? 'shipped' : order.status;
+    const terminalStatus = ['cancelled', 'delivered'].includes(order.status);
     const address = [order.address_line, order.city, order.province, order.postal_code, order.country].filter(Boolean).join(', ');
     const international = order.courier === 'philpost';
     const shippingSchemaAvailable = Object.hasOwn(order, 'actual_shipping_fee');
@@ -235,7 +314,7 @@ async function renderOrders() {
     if (order.payment_scope === 'products_only') {
       shippingControls = `<div class="shipping-controls"><label>Shipping amount (PHP)<input type="number" min="0" step="0.01" ${order.courier === 'lalamove' ? 'readonly' : ''} value="${order.courier === 'lalamove' ? 0 : order.separate_shipping_quote ?? ''}" data-shipping="${escapeHtml(order.id)}"/></label><small>${order.courier === 'lalamove' ? 'Customer pays rider' : 'Paid separately'}</small>${international ? `<details class="actual-shipping"><summary>Actual PhilPost cost and customer contact</summary><label>Actual cost (PHP)<input type="number" min="0" step="0.01" value="${order.separate_shipping_actual ?? ''}" data-separate-actual="${escapeHtml(order.id)}"/></label><label>Receipt reference<input type="text" value="${escapeHtml(order.separate_shipping_receipt || '')}" data-separate-receipt="${escapeHtml(order.id)}"/></label><label>Customer contacted at<input type="datetime-local" value="${toLocalInput(order.separate_shipping_contacted_at)}" data-separate-contact="${escapeHtml(order.id)}"/></label><label>Settlement details<input type="text" value="${escapeHtml(order.separate_shipping_settlement_note || '')}" data-separate-note="${escapeHtml(order.id)}"/></label><label>Settlement completed at<input type="datetime-local" value="${toLocalInput(order.separate_shipping_settled_at)}" data-separate-settled="${escapeHtml(order.id)}"/></label><small>${order.separate_shipping_adjustment == null ? 'Actual cost not recorded.' : `Actual cost minus estimate: ${currency(order.separate_shipping_adjustment)}. Handle any refund or balance outside the website.`}</small></details>` : ''}<button data-save-shipping="${escapeHtml(order.id)}">Save fee</button></div>`;
     }
-    const orderStatus = `<label>Order status<select class="order-status" data-order="${escapeHtml(order.id)}">${options.map((value) => `<option value="${value}" ${value === order.status ? 'selected' : ''} ${(['payment_confirmed','payment_rejected','payment_verification'].includes(value) || (!hasApprovedPayment && ['processing','ready_to_ship','shipped','in_transit','delivered'].includes(value)) || (['cancelled','payment_rejected'].includes(order.status) && value !== order.status)) ? 'disabled' : ''}>${value.replaceAll('_', ' ')}</option>`).join('')}</select></label>`;
+    const orderStatus = `<label>Order status<select class="order-status" data-order="${escapeHtml(order.id)}">${!['shipped','delivered','cancelled'].includes(currentStatus) ? `<option value="" selected disabled>${escapeHtml(orderStatusLabel(order.status))}</option>` : ''}${['shipped','delivered','cancelled'].map((value) => `<option value="${value}" ${value === currentStatus ? 'selected' : ''} ${(value !== currentStatus && (terminalStatus || order.status === 'payment_rejected' || (!hasApprovedPayment && ['shipped','delivered'].includes(value)))) ? 'disabled' : ''}>${orderStatusLabel(value)}</option>`).join('')}</select></label>`;
     const holdExpired = order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date();
     const nextAction = order.status === 'cancelled' ? (order.customer_cancel_reason ? `Cancelled by customer: ${order.customer_cancel_reason}.` : 'This order is cancelled.') : holdExpired ? 'The payment hold expired. Contact the customer before they pay; cancel the unpaid order to release its stock.' : order.payment_scope === 'products_only' && payment?.status === 'approved' ? 'Product payment approved. Contact the customer about shipping and prepare the order.' : order.payment_scope === 'products_only' && payment?.status === 'pending' ? 'Open the proof and check your bank or e-wallet before approving.' : order.payment_scope === 'products_only' ? 'Waiting for the customer to upload product payment proof.' : !order.shipping_confirmed ? '1. Confirm the shipping fee so the customer can pay.' : payment?.status === 'pending' ? '2. Open the proof and check your bank or e-wallet before approving.' : payment?.status === 'approved' ? 'Payment approved. Prepare the order for delivery.' : payment?.status === 'rejected' ? 'Proof rejected. Waiting for the customer to submit another image.' : 'Waiting for the customer to upload payment proof.';
     return `<tr class="order-table-row"><td><strong>${escapeHtml(order.order_number)}</strong><small>${new Date(order.created_at).toLocaleDateString('en-PH')}</small><small>${itemDetails || '—'}</small></td><td><strong>${escapeHtml(order.customer_name)}</strong><small>${escapeHtml(order.mobile || '')}</small><small>${escapeHtml(address)}</small><small>${escapeHtml(order.email || '')}</small></td><td>${orderStatus}<small>${escapeHtml(nextAction)}</small></td><td><strong>${order.payment_scope === 'products_only' || order.shipping_confirmed ? currency(order.total) : currency(order.subtotal)}</strong><small>${escapeHtml(order.payment_method)} · ${escapeHtml(payment?.status || 'not submitted')}</small>${proof}${review}</td><td><small>${escapeHtml(order.courier || 'To confirm')} · ${escapeHtml(order.shipping_region || 'No zone recorded')}</small>${shippingControls}</td><td><label>Courier tracking<input type="text" value="${escapeHtml(order.tracking_number || '')}" placeholder="Courier tracking number" data-tracking="${escapeHtml(order.id)}"/></label><small data-tracking-status="${escapeHtml(order.id)}">Saves after editing</small></td></tr>`;
@@ -243,12 +322,20 @@ async function renderOrders() {
 }
 function toLocalInput(value) { if (!value) return ''; const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 
-async function loadProducts() {
+async function loadProducts(options = {}) {
+  if (options.background && adminIsEditing()) return;
+  const request = ++adminProductRequest;
   const host = $('#products-body');
-  rowMessage(host, 5, 'Loading products…');
+  if (!productsLoaded) rowMessage(host, 5, 'Loading products…');
   const { data, error } = await fetchAll(() => supabase.from('products').select('id,name,description,sku,category_id,price,stock_quantity,reserved_quantity,image_urls,is_active,low_stock_threshold,options,specifications,shipping_class').order('name').order('id'));
-  if (error) { rowMessage(host, 5, failureMessage(error, 'Products'), 'products'); say(failureMessage(error, 'Products'), 'error'); return; }
-  productsCache = data || [];
+  if (request !== adminProductRequest || (options.background && adminIsEditing())) return;
+  if (error && options.background) { backgroundFailure('products'); return; }
+  if (error) { productsLoaded = false; productsLoadFailed = true; renderAttention(); renderOverviewSummary(); rowMessage(host, 5, failureMessage(error, 'Products'), 'products'); say(failureMessage(error, 'Products'), 'error'); return; }
+  backgroundFailures.delete('products');
+  const unchanged = productsLoaded && JSON.stringify(productsCache) === JSON.stringify(data || []);
+  productsCache = data || []; productsLoaded = true; productsLoadFailed = false;
+  if (options.background && unchanged) return;
+  renderAttention(); renderOverviewSummary();
   renderDashboardPanels();
   if (!data.length) { $('#catalog-empty').hidden = true; rowMessage(host, 5, 'No products yet. Add the first product to start the catalog.'); return; }
   host.innerHTML = data.map((product) => `<tr class="product-card-row" data-catalog-category="${escapeHtml(product.category_id || '')}"><td colspan="5"><article class="manage-card"><header class="catalog-product-head">${product.image_urls?.[0] ? `<img class="catalog-product-image" src="${escapeHtml(product.image_urls[0])}" alt="${escapeHtml(product.name)}"/>` : '<div class="catalog-product-image catalog-no-image">No image</div>'}<div class="catalog-product-details"><div class="catalog-product-name"><strong>${escapeHtml(product.name)}</strong></div><div class="catalog-product-number catalog-price"><small>Price</small><strong>${currency(product.price)}</strong></div><div class="catalog-product-number catalog-stock"><small>Available stock</small><strong>${product.stock_quantity - product.reserved_quantity}</strong></div></div><div class="catalog-row-actions"><button type="button" class="edit-product" data-edit-product="${escapeHtml(product.id)}" aria-label="Edit ${escapeHtml(product.name)}" title="Edit product"><span class="material-symbols-outlined" aria-hidden="true">edit</span></button><button type="button" class="delete-product" data-delete-product="${escapeHtml(product.id)}" aria-label="Delete ${escapeHtml(product.name)}" title="Delete product"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button></div></header><div class="product-editor-source" hidden><div class="product-edit-grid"><label>Product name<input class="row-edit" value="${escapeHtml(product.name)}" data-product-name="${product.id}"/></label><label>Category<select class="row-select" data-product-category="${product.id}">${categories.map((category) => `<option value="${escapeHtml(category.id)}" ${category.id === product.category_id ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select></label><label>Price (PHP)<input class="row-edit" type="number" min="0" step="0.01" value="${Number(product.price)}" data-product-price="${product.id}"/></label><label>Stock on hand<input type="number" min="${product.reserved_quantity}" value="${product.stock_quantity}" data-stock-value="${product.id}"/><button type="button" data-save-stock="${product.id}">Save stock</button><small>Cannot be below ${product.reserved_quantity} reserved.</small></label><label class="publish-edit"><input type="checkbox" data-product-published="${product.id}" ${product.is_active?'checked':''}/> Show in shop</label><label>Description<textarea class="row-edit" data-product-description="${product.id}" rows="3">${escapeHtml(product.description)}</textarea></label><label>SKU<input class="row-edit" value="${escapeHtml(product.sku || '')}" data-product-sku="${product.id}"/></label>${product.image_urls?.[0] ? `<img class="admin-product-image-preview" src="${escapeHtml(product.image_urls[0])}" alt="Current product photo"/>` : '<span>No product image uploaded yet.</span>'}<label>Replace product image<input class="row-edit" type="file" accept="image/jpeg,image/png,image/webp" data-product-image="${product.id}"/></label><label>Shipping size<select class="row-select" data-product-shipping-class="${product.id}"><option value="" ${!product.shipping_class ? 'selected' : ''}>Not set — review needed</option>${[...shippingClasses].map(([value, label]) => `<option value="${value}" ${product.shipping_class === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label><details class="advanced-product"><summary>Advanced product options and specifications</summary><label>Options data<textarea class="row-edit product-json-edit" data-product-options="${product.id}" rows="6">${escapeHtml(JSON.stringify(product.options || [], null, 2))}</textarea></label><label>Specifications data<textarea class="row-edit product-json-edit" data-product-specifications="${product.id}" rows="5">${escapeHtml(JSON.stringify(product.specifications || {}, null, 2))}</textarea></label></details></div><button class="admin-action product-save" data-save-product="${product.id}">Save product details</button><small class="product-save-status" data-product-save-status="${product.id}" role="status" aria-live="polite"></small></div></article></td></tr>`).join('');
@@ -262,7 +349,7 @@ function applyCatalogFilter() {
 }
 async function loadCategories() {
   const host = $('#categories-body');
-  rowMessage(host, 2, 'Loading categories…');
+  if (!categories.length) rowMessage(host, 2, 'Loading categories…');
   const { data, error } = await supabase.from('categories').select('id,name,sort_order,is_active').order('sort_order').order('name');
   if (error) { rowMessage(host, 2, failureMessage(error, 'Categories'), 'categories'); say(failureMessage(error, 'Categories'), 'error'); return; }
   categories = data || [];
@@ -275,19 +362,25 @@ async function loadCategories() {
 }
 async function loadInventory() {
   const host = $('#inventory-list');
-  host.textContent = 'Loading stock activity…';
+  if (!host.dataset.loaded) host.textContent = 'Loading stock activity…';
   const { data, error } = await fetchAll(() => supabase.from('inventory_transactions').select('id,quantity_delta,reason,note,created_at,products(name)').order('created_at', { ascending: false }).order('id', { ascending: false }));
   if (error) { host.innerHTML = `<p class="panel-message">${escapeHtml(failureMessage(error, 'Inventory activity'))} <button class="text-action" data-retry="inventory">RETRY</button></p>`; return; }
+  host.dataset.loaded = 'true';
   if (!data.length) { host.textContent = 'No inventory changes recorded yet.'; return; }
   host.innerHTML = data.map((row) => `<article><strong>${escapeHtml(row.products?.name || 'Product')}</strong><span>${row.quantity_delta > 0 ? '+' : ''}${row.quantity_delta} · ${escapeHtml(row.reason.replaceAll('_',' '))}</span><small>${new Date(row.created_at).toLocaleString('en-PH')}</small></article>`).join('');
 }
 
-async function loadProfiles() {
+async function loadProfiles(options = {}) {
+  if (options.background && adminIsEditing()) return;
   const host = $('#customers-body');
-  rowMessage(host, 4, 'Loading customer profiles…');
+  if (!profilesLoaded) rowMessage(host, 4, 'Loading customer profiles…');
   const { data, error } = await fetchAll(() => supabase.rpc('admin_customer_profiles').select('id,full_name,phone,created_at').order('id'));
-  if (error) { profilesLoaded = false; rowMessage(host, 4, failureMessage(error, 'Customers'), 'customers'); return; }
-  profilesCache = data || []; profilesLoaded = true; renderCustomers();
+  if (options.background && adminIsEditing()) return;
+  if (error && options.background) { backgroundFailure('customers'); return; }
+  if (error) { profilesLoaded = false; renderOverviewSummary(); rowMessage(host, 4, failureMessage(error, 'Customers'), 'customers'); return; }
+  backgroundFailures.delete('customers');
+  const unchanged = profilesLoaded && JSON.stringify(profilesCache) === JSON.stringify(data || []);
+  profilesCache = data || []; profilesLoaded = true; if (!options.background || !unchanged) renderCustomers(); renderOverviewSummary();
 }
 function renderCustomers() {
   if (!profilesLoaded) return;
@@ -361,6 +454,10 @@ $('#toggle-product-form').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-close-product-dialog]').forEach((button) => button.addEventListener('click', () => productDialog.close()));
 productDialog.addEventListener('click', (event) => { if (event.target === productDialog) productDialog.close(); });
+const orderDetailsDialog = $('#overview-order-dialog');
+$('#close-overview-order').addEventListener('click', () => orderDetailsDialog.close());
+orderDetailsDialog.addEventListener('click', (event) => { if (event.target === orderDetailsDialog) orderDetailsDialog.close(); });
+orderDetailsDialog.addEventListener('close', () => { overviewPreviewVersion++; $('#audit-detail').replaceChildren(); });
 const proofDialog = $('#proof-dialog');
 const proofImage = $('#proof-dialog-image');
 const proofStatus = $('#proof-dialog-status');
@@ -385,8 +482,14 @@ $('#toggle-category-form').addEventListener('click', () => openCategoryDialog(tr
 $('#close-category-dialog').addEventListener('click', () => categoryDialog.close());
 categoryDialog.addEventListener('click', (event) => { if (event.target === categoryDialog) categoryDialog.close(); });
 document.addEventListener('click', async (event) => {
+  const dashboardView = event.target.closest('[data-dashboard-view]');
+  if (dashboardView) { const view = dashboardView.dataset.dashboardView; markActivityRead(view); showAdminView(view, true); window.scrollTo({ top: 0, behavior: 'smooth' }); if (['orders', 'payments', 'shipping'].includes(view)) loadOrders(); if (view === 'customers') loadProfiles(); return; }
   const selectedOrder = event.target.closest('[data-select-order]');
-  if (selectedOrder) { selectedOrderId = selectedOrder.dataset.selectOrder; renderDashboardPanels(); return; }
+  const attentionProduct = event.target.closest('[data-attention-product]');
+  if (attentionProduct) { const id = attentionProduct.dataset.attentionProduct; catalogCategory = ''; applyCatalogFilter(); showAdminView('products', true); const target = $(`[data-edit-product="${id}"]`); if (target) { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); target.focus({ preventScroll: true }); } else say('Product is unavailable. Refresh the catalog.', 'error'); return; }
+  const attentionView = event.target.closest('[data-attention-view]');
+  if (attentionView) { showAdminView(attentionView.dataset.attentionView, true); return; }
+  if (selectedOrder) { selectedOrderId = selectedOrder.dataset.selectOrder; const dialog = $('#overview-order-dialog'); if (!dialog.open) dialog.showModal(); renderDashboardPanels(); return; }
   const viewProof = event.target.closest('[data-view-proof]');
   if (viewProof) {
     const order = ordersCache.find((row) => row.id === viewProof.dataset.viewProof);
@@ -469,7 +572,7 @@ $('#orders-body').addEventListener('change', async (event) => {
     const { data, error } = await supabase.from('orders').update({ tracking_number: input.value.trim() || null }).eq('id', id).select('id').maybeSingle();
     input.disabled = false;
     if (error || !data) { message.textContent = 'Not saved. Try again.'; say(failureMessage(error || new Error('No order updated'), 'Tracking'), 'error'); }
-    else { message.textContent = 'Saved'; const order = ordersCache.find((item) => item.id === id); if (order) order.tracking_number = input.value.trim() || null; }
+    else { input.defaultValue = input.value; message.textContent = 'Saved'; const order = ordersCache.find((item) => item.id === id); if (order) order.tracking_number = input.value.trim() || null; }
     return;
   }
   const orderId = event.target.dataset.order; if (!orderId) return;
@@ -507,7 +610,7 @@ document.addEventListener('click', async (event) => {
   if (review) {
     review.disabled = true; review.textContent = 'REVIEWING…'; say('Checking payment proof review…');
     const { error } = await supabase.rpc('admin_review_payment', { p_payment_id: review.dataset.review, p_approved: review.dataset.approved === 'true' });
-    if (error) say(failureMessage(error, 'Manual payment review'), 'error'); else { selectedOrderId = null; say(review.dataset.approved === 'true' ? 'Payment manually approved and inventory updated.' : 'Payment proof rejected and stock hold released.', 'success'); }
+    if (error) say(failureMessage(error, 'Manual payment review'), 'error'); else { if (orderDetailsDialog.open) orderDetailsDialog.close(); selectedOrderId = null; say(review.dataset.approved === 'true' ? 'Payment manually approved and inventory updated.' : 'Payment proof rejected and stock hold released.', 'success'); }
     await Promise.all([loadOrders(), loadProducts(), loadMetrics(), loadInventory()]); return;
   }
   const shippingSave = event.target.closest('[data-save-shipping]');
@@ -586,10 +689,36 @@ document.addEventListener('click', async (event) => {
     if (error) say(failureMessage(error, 'Category update'), 'error'); else { say('Category updated.', 'success'); await loadCategories(); await loadProducts(); }
   }
 });
+const gcashForm = $('#gcash-settings-form');
+let gcashSettingsLoaded = false;
+async function loadGcashSettings() {
+  const message = $('.form-status', gcashForm);
+  const button = $('button[type="submit"]', gcashForm);
+  button.disabled = true;
+  const { data, error } = await supabase.from('gcash_payment_details').select('account_name,account_number').eq('id', true).maybeSingle();
+  if (error || !data) { gcashSettingsLoaded = false; message.textContent = 'GCash settings are unavailable. Apply the reviewed database migration and refresh, or contact the site maintainer.'; return; }
+  gcashForm.elements.account_name.value = data.account_name;
+  gcashForm.elements.account_number.value = data.account_number;
+  gcashSettingsLoaded = true;
+  message.textContent = data.account_name ? 'Current details are visible to signed-in customers.' : 'No GCash details saved yet. Customers are asked to contact the shop.';
+  button.disabled = false;
+}
+gcashForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!gcashSettingsLoaded) return;
+  const message = $('.form-status', gcashForm);
+  const accountName = gcashForm.elements.account_name.value.trim();
+  const accountNumber = gcashForm.elements.account_number.value.trim();
+  if (!accountName || !accountNumber) { message.textContent = 'Enter both the account name and GCash number.'; return; }
+  const button = $('button[type="submit"]', gcashForm); button.disabled = true;
+  const { data, error } = await supabase.from('gcash_payment_details').update({ account_name: accountName, account_number: accountNumber }).eq('id', true).select('id').maybeSingle();
+  button.disabled = false;
+  message.textContent = error || !data ? 'Could not save GCash details. Check your access and try again.' : 'GCash details saved. Check them carefully before customers pay.';
+});
 const adminTabs = [...document.querySelectorAll('.admin-sidebar nav a[href^="#"]')];
 const adminViews = {
-  overview: [$('.admin-metrics'), $('#dashboard-workspace')],
-  payments: [$('#dashboard-workspace')],
+  overview: [$('.admin-metrics'), $('#overview-sections'), $('#dashboard-workspace'), $('.sales-chart-section')],
+  payments: [$('#gcash-settings'), $('#dashboard-workspace')],
   orders: [$('#orders')],
   products: [$('#products'), $('#inventory')],
   shipping: [$('#orders')],
@@ -598,10 +727,18 @@ const adminViews = {
 };
 function showAdminView(view, updateHash = false) {
   if (!adminViews[view]) view = 'overview';
+  currentAdminView = view;
+  if (view === 'payments') {
+    if (authorized && !gcashSettingsLoaded) loadGcashSettings();
+    const pending = ordersCache.filter((order) => order.status === 'payment_verification' && order.payments?.some((payment) => payment.status === 'pending' && payment.proof_path));
+    if (!pending.some((order) => order.id === selectedOrderId)) selectedOrderId = pending[0]?.id || null;
+  } else if (view === 'overview' && !selectedOrderId) selectedOrderId = ordersCache[0]?.id || null;
+  if (view === 'overview' || view === 'payments') renderDashboardPanels();
   const allPanels = new Set(Object.values(adminViews).flat());
   allPanels.forEach((panel) => { const active = adminViews[view].includes(panel); panel.hidden = !active; panel.classList.toggle('view-enter', active); });
   // The payment workspace focuses on the review queue and selected proof.
-  document.querySelectorAll('.fulfillment-panel, .telemetry-panel').forEach((panel) => { panel.hidden = view === 'payments'; });
+  document.querySelectorAll('.fulfillment-panel, .telemetry-panel').forEach((panel) => { panel.hidden = true; });
+  $('#attention-panel').hidden = view === 'payments';
   adminTabs.forEach((tab) => {
     const active = tab.hash === `#${view}`;
     tab.classList.toggle('selected', active);
@@ -665,11 +802,15 @@ async function refreshNotifications() {
     ]);
     const failed = [orders, payments, customers].find((result) => result.error);
     if (failed) throw failed.error;
+    const priorKeys = new Set(notificationEvents.map((event) => event.key));
     notificationEvents = [
-      ...orders.data.map((order) => ({ type: 'orders', time: Date.parse(order.created_at), label: `New order ${order.order_number} · ${order.status.replaceAll('_', ' ')}` })),
-      ...payments.data.filter((payment) => payment.proof_path).map((payment) => ({ type: 'payments', time: Date.parse(payment.created_at), label: `Payment proof awaiting review · ${payment.orders?.order_number || 'Order'}` })),
-      ...customers.data.map((customer) => ({ type: 'customers', time: Date.parse(customer.created_at), label: `New customer · ${customer.full_name || 'Name not provided'}` })),
+      ...orders.data.map((order) => ({ key: `order:${order.id}`, type: 'orders', time: Date.parse(order.created_at), label: `New order ${order.order_number} · ${orderStatusLabel(order.status)}` })),
+      ...payments.data.filter((payment) => payment.proof_path).map((payment) => ({ key: `payment:${payment.id}`, type: 'payments', time: Date.parse(payment.created_at), label: `Payment proof awaiting review · ${payment.orders?.order_number || 'Order'}` })),
+      ...customers.data.map((customer) => ({ key: `customer:${customer.id}`, type: 'customers', time: Date.parse(customer.created_at), label: `New customer · ${customer.full_name || 'Name not provided'}` })),
     ].filter((event) => Number.isFinite(event.time)).sort((a, b) => b.time - a.time);
+    const newEvents = notificationEvents.filter((event) => !priorKeys.has(event.key));
+    if (notificationBaselineReady && newEvents.length) notifyActivity(newEvents.length === 1 ? newEvents[0].label : `${newEvents.length} new updates. Open notifications to see them.`, 'info');
+    notificationBaselineReady = true;
     renderNotifications();
   } catch { renderNotifications('Activity could not be refreshed.'); }
   finally { notificationRefreshing = false; }
@@ -684,4 +825,19 @@ $('#notification-list').addEventListener('click', (event) => {
 });
 document.addEventListener('click', (event) => { if (!event.target.closest('.notification-wrap')) { $('#notification-panel').hidden = true; $('#notification-toggle').setAttribute('aria-expanded', 'false'); } });
 updateClock(); setInterval(updateClock, 1000);
-if (authorized) { refreshNotifications(); setInterval(() => { if (navigator.onLine && !document.hidden) refreshNotifications(); }, 30000); }
+async function refreshAdminInBackground() {
+  if (!authorized || adminAutoRefreshing || document.hidden || !navigator.onLine) return;
+  adminAutoRefreshing = true;
+  try {
+    await refreshNotifications();
+    if (!adminIsEditing()) await Promise.all([loadOrders({ background: true }), loadMetrics({ background: true }), loadProducts({ background: true }), loadProfiles({ background: true })]);
+    backgroundFailures.delete('dashboard');
+  } catch { backgroundFailure('dashboard'); }
+  finally { adminAutoRefreshing = false; }
+}
+if (authorized) {
+  refreshNotifications();
+  setInterval(refreshAdminInBackground, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAdminInBackground(); });
+  window.addEventListener('online', refreshAdminInBackground);
+}

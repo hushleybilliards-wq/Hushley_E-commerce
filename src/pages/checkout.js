@@ -1,9 +1,13 @@
+import '../lib/activity-island.js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
 let cartEntries;
 try { cartEntries = new Map(JSON.parse(localStorage.getItem('hushley-cart') || '[]')); }
 catch { localStorage.removeItem('hushley-cart'); cartEntries = new Map(); }
-const items = [...cartEntries.values()];
+let checkoutSelection = null;
+try { checkoutSelection = JSON.parse(sessionStorage.getItem('hushley-checkout') || 'null'); } catch { sessionStorage.removeItem('hushley-checkout'); }
+const checkoutKeys = checkoutSelection?.mode === 'cart' && Array.isArray(checkoutSelection.keys) ? checkoutSelection.keys : [...cartEntries.keys()];
+const items = checkoutSelection?.mode === 'direct' && Array.isArray(checkoutSelection.items) ? checkoutSelection.items : checkoutKeys.filter((key) => cartEntries.has(key)).map((key) => cartEntries.get(key));
 const itemHost = document.querySelector('#checkout-items');
 const gate = document.querySelector('#checkout-gate');
 const form = document.querySelector('#checkout-form');
@@ -232,10 +236,14 @@ document.querySelector('#change-delivery-address').addEventListener('click', asy
 
 itemHost.innerHTML = items.length ? items.map(({ product, quantity, selected_options, options }) => {
   const choices = selected_options || options || {};
-  return `<div class="checkout-item"><span>${escapeHtml(product.name)}<small>QTY ${Number(quantity)}</small>${Object.keys(choices).length ? `<small class="checkout-options">${formatOptions(choices)}</small>` : ''}</span><strong>${product.price !== undefined ? currency(Number(product.price) * quantity) : 'TBC'}</strong></div>`;
+  const hasPrice = product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price));
+  const photo = product.image_urls?.find((url) => typeof url === 'string' && url.trim());
+  return `<div class="checkout-item">${photo ? `<img class="checkout-item-photo" src="${escapeHtml(photo)}" alt="" />` : '<div class="checkout-item-photo checkout-photo-placeholder" aria-hidden="true">—</div>'}<div class="checkout-item-info"><strong class="checkout-item-name">${escapeHtml(product.name)}</strong>${Object.keys(choices).length ? `<small class="checkout-options">${formatOptions(choices)}</small>` : ''}<small>Qty ${Number(quantity)}${hasPrice ? ` · ${currency(product.price)} each` : ''}</small></div><strong class="checkout-line-total">${hasPrice ? currency(Number(product.price) * Number(quantity)) : 'TBC'}</strong></div>`;
 }).join('') : '<p class="empty-orders">Your cart is empty.</p>';
 const subtotal = items.reduce((sum, line) => sum + (Number(line.product.price) || 0) * line.quantity, 0);
-document.querySelector('#checkout-subtotal').textContent = items.every(({ product }) => product.price !== undefined) ? currency(subtotal) : 'PRICE TO BE CONFIRMED';
+const itemCount = items.reduce((sum, item) => sum + Number(item.quantity), 0);
+document.querySelector('#checkout-count').textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
+document.querySelector('#checkout-subtotal').textContent = !items.length ? '—' : items.every(({ product }) => product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price))) ? currency(subtotal) : 'To be confirmed';
 
 if (!items.length) {
   showGate('Add gear to your cart before checkout.');
@@ -301,7 +309,19 @@ form.addEventListener('submit', async (event) => {
     };
     const { data: orderId, error } = await supabase.rpc('place_order', payload);
     if (error) throw error;
-    localStorage.removeItem('hushley-cart');
+    if (checkoutSelection?.mode !== 'direct') {
+      let currentCart;
+      try { currentCart = new Map(JSON.parse(localStorage.getItem('hushley-cart') || '[]')); } catch { currentCart = new Map(); }
+      for (const key of checkoutKeys) {
+        const current = currentCart.get(key);
+        const ordered = cartEntries.get(key);
+        if (!current || !ordered) continue;
+        if (Number(current.quantity) > Number(ordered.quantity)) current.quantity -= Number(ordered.quantity);
+        else currentCart.delete(key);
+      }
+      localStorage.setItem('hushley-cart', JSON.stringify([...currentCart]));
+    }
+    sessionStorage.removeItem('hushley-checkout');
     let addressSaveFailed = false;
     if (values.has('save_default_address')) {
       try {

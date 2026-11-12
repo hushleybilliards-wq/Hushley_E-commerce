@@ -39,3 +39,12 @@
   .detail-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .detail-actions .button { padding-inline: 6px; font-size: 11px; }
 }
+.cart-drawer .cart-line { grid-template-columns:20px 50px minmax(0,1fr) auto; align-items:start; gap:8px; }
+.cart-drawer .cart-select { width:17px; height:17px; margin:4px 0; accent-color:var(--ui-primary-strong); }
+.cart-drawer .cart-thumb { width:50px; height:50px; }
+.cart-drawer .cart-info { min-width:0; }
+.cart-drawer .cart-info h3, .cart-drawer .cart-options { display:block; white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
+.cart-drawer .cart-line-end { min-width:0; }
+.cart-select-all { display:flex; align-items:center; gap:8px; margin-bottom:12px; color:var(--ui-text); font-size:12px; cursor:pointer; }
+.cart-select-all input { width:17px; height:17px; accent-color:var(--ui-primary-strong); }
+.cart-footer .checkout-button:disabled { opacity:.5; cursor:not-allowed; }

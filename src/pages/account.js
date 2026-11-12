@@ -1,3 +1,4 @@
+import { notifyActivity } from '../lib/activity-island.js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 import { passwordIssue } from '../lib/password.js';
 import { isGmailSignupEmail } from '../lib/signup.js';
@@ -55,7 +56,7 @@ function networkState() {
 window.addEventListener('offline', networkState);
 window.addEventListener('online', () => {
   networkState();
-  if (currentUser) { accountConnection.hidden = false; accountConnection.textContent = 'Connection restored. Refresh your orders to get the latest status.'; accountConnection.dataset.kind = 'success'; }
+  if (currentUser) { accountConnection.hidden = false; accountConnection.textContent = 'Connection restored. Your orders will update automatically.'; accountConnection.dataset.kind = 'success'; }
 });
 networkState();
 function selectedChannel() { return form.elements.signup_channel.value; }
@@ -159,7 +160,7 @@ async function showAccount(user) {
     say('Your email is verified. Complete your account details.', 'success');
     return;
   }
-  if (currentUser?.id !== user.id) customerOrders = [];
+  if (currentUser?.id !== user.id) { customerOrders = []; customerOrdersReady = false; }
   currentUser = user;
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
@@ -183,28 +184,63 @@ async function showAccount(user) {
   await loadOrders();
 }
 let customerOrders = [];
+let customerOrdersReady = false;
+let customerOrderRequest = 0;
+let customerBackgroundBusy = false;
+let customerForegroundBusy = false;
+let customerRefreshFailed = false;
+let gcashDetails = null;
+async function loadGcashDetails() {
+  const { data, error } = await supabase.from('gcash_payment_details').select('account_name,account_number').eq('id', true).maybeSingle();
+  gcashDetails = !error && data?.account_name?.trim() && data?.account_number?.trim() ? data : null;
+}
+function paymentDetails(order) {
+  if (order.payment_method !== 'gcash') return '<p>Contact the shop for the payment details for this method before paying.</p>';
+  if (!gcashDetails) return '<div class="payment-placeholder"><strong>GCash details are not available yet</strong><p>Contact the shop for the correct recipient before paying.</p></div>';
+  return `<div class="payment-placeholder"><strong>Pay via GCash</strong><table><tbody><tr><th scope="row">Account name</th><td>${escapeHtml(gcashDetails.account_name)}</td></tr><tr><th scope="row">GCash number</th><td>${escapeHtml(gcashDetails.account_number)}</td></tr></tbody></table><p>Check the recipient before sending payment, then upload your receipt below.</p></div>`;
+}
 let orderFilter = 'all';
-async function loadOrders() {
-  if (!currentUser || !supabase) return;
+function customerOrderEditing() {
   const host = document.querySelector('#orders-list');
-  host.innerHTML = '<p class="state-loading" role="status">Loading your orders…</p>';
-  let slowTimer = setTimeout(() => { host.insertAdjacentHTML('afterbegin', '<p class="slow-note">This is taking longer than usual. Your orders are still loading.</p>'); }, 7000);
-  let { data, error } = await supabase.from('orders').select('id,order_number,status,subtotal,shipping_fee,total,courier,payment_method,tracking_number,shipping_confirmed,payment_scope,separate_shipping_quote,separate_shipping_actual,separate_shipping_adjustment,hold_expires_at,created_at,order_items(product_name,quantity,selected_options,products(image_urls)),payments(id)').eq('customer_id', currentUser.id).order('created_at', { ascending: false });
+  return !!(host.contains(document.activeElement) || host.querySelector('[data-cancel-form]:not([hidden]), .proof-upload button:disabled, [data-confirm-delivery]:disabled') || [...host.querySelectorAll('.proof-upload input[type=file]')].some((input) => input.files?.length));
+}
+async function loadOrders(options = {}) {
+  if (!currentUser || !supabase || (options.background && customerOrderEditing())) return;
+  const request = ++customerOrderRequest; const userId = currentUser.id;
+  if (!options.background) customerForegroundBusy = true;
+  try {
+  const host = document.querySelector('#orders-list');
+  if (!options.background) host.innerHTML = '<p class="state-loading" role="status">Loading your orders…</p>';
+  const slowTimer = options.background ? null : setTimeout(() => { host.insertAdjacentHTML('afterbegin', '<p class="slow-note">This is taking longer than usual. Your orders are still loading.</p>'); }, 7000);
+  let { data, error } = await supabase.from('orders').select('id,order_number,status,subtotal,shipping_fee,total,courier,payment_method,tracking_number,shipping_confirmed,payment_scope,separate_shipping_quote,separate_shipping_actual,separate_shipping_adjustment,hold_expires_at,created_at,order_items(product_name,quantity,selected_options,products(image_urls)),payments(id)').eq('customer_id', userId).order('created_at', { ascending: false });
   if (error && /payment_scope|separate_shipping|schema cache/i.test(error.message || '')) {
-    ({ data, error } = await supabase.from('orders').select('id,order_number,status,subtotal,shipping_fee,total,courier,payment_method,tracking_number,shipping_confirmed,hold_expires_at,created_at,order_items(product_name,quantity,selected_options,products(image_urls)),payments(id)').eq('customer_id', currentUser.id).order('created_at', { ascending: false }));
+    ({ data, error } = await supabase.from('orders').select('id,order_number,status,subtotal,shipping_fee,total,courier,payment_method,tracking_number,shipping_confirmed,hold_expires_at,created_at,order_items(product_name,quantity,selected_options,products(image_urls)),payments(id)').eq('customer_id', userId).order('created_at', { ascending: false }));
   }
   clearTimeout(slowTimer);
+  if (request !== customerOrderRequest || currentUser?.id !== userId || (options.background && customerOrderEditing())) return;
+  if (error && options.background) {
+    if (!customerRefreshFailed) notifyActivity('Could not update your orders. We will try again.', 'warning');
+    customerRefreshFailed = true; return;
+  }
   if (error) {
     host.innerHTML = `<div class="state-error"><p>${escapeHtml(error.message || 'Your order history could not be loaded.')}</p><button class="admin-action" type="button" id="retry-orders">TRY AGAIN</button></div>`;
     host.querySelector('#retry-orders').addEventListener('click', loadOrders, { once: true });
     return;
   }
-  customerOrders = data || [];
+  customerRefreshFailed = false;
+  const changed = customerOrdersReady && JSON.stringify(customerOrders) !== JSON.stringify(data || []);
+  if (options.background && customerOrdersReady && !changed) return;
+  await loadGcashDetails();
+  if (request !== customerOrderRequest || currentUser?.id !== userId || (options.background && customerOrderEditing())) return;
+  customerOrders = data || []; customerOrdersReady = true;
   renderCustomerOrders();
+  if (options.background && changed) notifyActivity('Your orders have been updated.', 'info');
+  } finally { if (!options.background && request === customerOrderRequest) customerForegroundBusy = false; }
 }
 function renderCustomerOrders() {
   const host = document.querySelector('#orders-list');
-  const groups = { 'to-pay': ['pending_payment', 'payment_rejected'], processing: ['payment_verification', 'payment_confirmed', 'processing', 'ready_to_ship'], 'in-transit': ['shipped', 'in_transit'], delivered: ['delivered'], cancelled: ['cancelled'] };
+  const groups = { 'to-pay': ['pending_payment', 'payment_rejected'], shipped: ['shipped', 'in_transit'], delivered: ['delivered'], cancelled: ['cancelled'] };
+  const statusLabel = (status) => ({ pending_payment: 'To pay', payment_rejected: 'Payment needs attention', payment_verification: 'Payment under review', payment_confirmed: 'Preparing', processing: 'Preparing', ready_to_ship: 'Preparing', shipped: 'Shipped', in_transit: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' }[status] || status.replaceAll('_', ' '));
   const query = document.querySelector('#customer-order-search').value.trim().toLowerCase();
   const data = customerOrders.filter((order) => (orderFilter === 'all' || groups[orderFilter]?.includes(order.status)) && (!query || [order.order_number, ...(order.order_items || []).map((item) => item.product_name)].some((value) => String(value || '').toLowerCase().includes(query))));
   if (!data.length) {
@@ -220,10 +256,11 @@ function renderCustomerOrders() {
     if (order.status === 'payment_verification') return 'Your proof is awaiting manual review by the shop.';
     if (order.status === 'cancelled') return 'This order has been cancelled. Contact the shop if you need help.';
     if (order.status === 'delivered') return 'This order is marked as delivered.';
+    if (['shipped', 'in_transit'].includes(order.status)) return 'Your order has been shipped. Confirm receipt once it arrives.';
     return 'Payment has been approved. Follow the order status and tracking details below.';
   };
   const cancellationControl = (order) => customerView === 'orders' && order.status === 'pending_payment' && !(order.payments || []).length ? `<div class="customer-cancel"><button type="button" data-open-cancel="${escapeHtml(order.id)}">Cancel order</button><form data-cancel-form="${escapeHtml(order.id)}" hidden><label>Reason for cancellation<select name="reason" required><option value="">Choose a reason</option><option>Changed my mind</option><option>Ordered the wrong item</option><option>Duplicate order</option><option>Other</option></select></label><small>Only cancel if you have not paid. If you already paid, contact the shop; refunds are handled manually.</small><div><button type="submit">Confirm cancellation</button><button type="button" data-close-cancel>Keep order</button></div></form></div>` : '';
-  host.innerHTML = data.map((order) => `<article class="order-row"><div class="order-card-header"><div><span class="order-card-label">ORDER</span><strong>${escapeHtml(order.order_number)}</strong><span>${new Date(order.created_at).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })}</span></div><span class="status-pill status-${escapeHtml(order.status)}">${escapeHtml(order.status.replaceAll('_', ' '))}</span></div><p class="order-next-step">${escapeHtml(nextStep(order))}</p><div class="order-items">${(order.order_items || []).map((item) => `<div class="order-item-line">${item.products?.image_urls?.[0] ? `<img class="order-item-photo" src="${escapeHtml(item.products.image_urls[0])}" alt="${escapeHtml(item.product_name)}" loading="lazy"/>` : `<span class="order-item-photo order-photo-missing" aria-label="Product image unavailable">—</span>`}<div><strong>${escapeHtml(item.product_name)} × ${Number(item.quantity)}</strong>${Object.keys(item.selected_options || {}).length ? `<span>${escapeHtml(Object.entries(item.selected_options).map(([key, value]) => `${key}: ${value}`).join(' · '))}</span>` : ''}</div></div>`).join('')}</div><div class="order-summary"><span>Payment <strong>${escapeHtml(order.payment_method.toUpperCase())}</strong></span><span>Courier <strong>${escapeHtml(order.courier || 'To be confirmed')}</strong></span><span>Shipping <strong>${order.payment_scope === 'products_only' ? (order.separate_shipping_quote != null ? escapeHtml(money(order.separate_shipping_quote)) + ' (separate)' : 'Shop will contact you') : order.shipping_confirmed ? escapeHtml(money(order.shipping_fee)) : 'To be confirmed'}</strong></span><span>${order.payment_scope === 'products_only' ? 'Product payment' : order.shipping_confirmed ? 'Total' : 'Subtotal'} <strong>${escapeHtml(money(order.payment_scope === 'products_only' || order.shipping_confirmed ? order.total : order.subtotal))}</strong></span></div>${order.tracking_number ? `<p class="order-tracking">Tracking number: <strong>${escapeHtml(order.tracking_number)}</strong></p>` : ''}${customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) && (order.shipping_confirmed || order.payment_scope === 'products_only') && !(order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date()) ? `<form class="proof-upload" data-proof-order="${escapeHtml(order.id)}"><label>Upload payment proof<input type="file" accept="image/jpeg,image/png,image/webp" required /></label><small>JPEG, PNG or WebP · maximum 10 MB. A clear, cropped screenshot around 0.5–2 MB is recommended.</small><p class="proof-file-status" role="status" aria-live="polite"></p><button class="admin-action" type="submit">UPLOAD</button><small>Staff will check your payment manually before approving the order.</small></form>` : customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) ? `<div class="proof-waiting"><button type="button" disabled>UPLOAD</button><small>${order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date() ? 'This order’s payment hold has expired. Contact the shop before paying.' : 'Available after the shop confirms your shipping fee. Select Refresh orders to check again.'}</small></div>` : ''}${cancellationControl(order)}</article>`).join('');
+  host.innerHTML = data.map((order) => `<article class="order-row"><div class="order-card-header"><div><span class="order-card-label">ORDER</span><strong>${escapeHtml(order.order_number)}</strong><span>${new Date(order.created_at).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })}</span></div><span class="status-pill status-${escapeHtml(order.status)}">${escapeHtml(statusLabel(order.status))}</span></div><p class="order-next-step">${escapeHtml(nextStep(order))}</p><div class="order-items">${(order.order_items || []).map((item) => `<div class="order-item-line">${item.products?.image_urls?.[0] ? `<img class="order-item-photo" src="${escapeHtml(item.products.image_urls[0])}" alt="${escapeHtml(item.product_name)}" loading="lazy"/>` : `<span class="order-item-photo order-photo-missing" aria-label="Product image unavailable">—</span>`}<div><strong>${escapeHtml(item.product_name)} × ${Number(item.quantity)}</strong>${Object.keys(item.selected_options || {}).length ? `<span>${escapeHtml(Object.entries(item.selected_options).map(([key, value]) => `${key}: ${value}`).join(' · '))}</span>` : ''}</div></div>`).join('')}</div><div class="order-summary"><span>Payment <strong>${escapeHtml(order.payment_method.toUpperCase())}</strong></span><span>Courier <strong>${escapeHtml(order.courier || 'To be confirmed')}</strong></span><span>Shipping <strong>${order.payment_scope === 'products_only' ? (order.separate_shipping_quote != null ? escapeHtml(money(order.separate_shipping_quote)) + ' (separate)' : 'Shop will contact you') : order.shipping_confirmed ? escapeHtml(money(order.shipping_fee)) : 'To be confirmed'}</strong></span><span>${order.payment_scope === 'products_only' ? 'Product payment' : order.shipping_confirmed ? 'Total' : 'Subtotal'} <strong>${escapeHtml(money(order.payment_scope === 'products_only' || order.shipping_confirmed ? order.total : order.subtotal))}</strong></span></div>${order.tracking_number ? `<p class="order-tracking">Tracking number: <strong>${escapeHtml(order.tracking_number)}</strong></p>` : ''}${customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) && (order.shipping_confirmed || order.payment_scope === 'products_only') && !(order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date()) ? `${paymentDetails(order)}<form class="proof-upload" data-proof-order="${escapeHtml(order.id)}"><label>Upload payment proof<input type="file" accept="image/jpeg,image/png,image/webp" required /></label><small>JPEG, PNG or WebP · maximum 10 MB. A clear, cropped screenshot around 0.5–2 MB is recommended.</small><p class="proof-file-status" role="status" aria-live="polite"></p><button class="admin-action" type="submit">SUBMIT PAYMENT PROOF</button><small>Staff will check your payment manually before approving the order.</small></form>` : customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) ? `<div class="proof-waiting"><button type="button" disabled>UPLOAD</button><small>${order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date() ? 'This order’s payment hold has expired. Contact the shop before paying.' : 'Available after the shop confirms your shipping fee. Select Refresh orders to check again.'}</small></div>` : ''}${customerView === 'orders' && ['shipped', 'in_transit'].includes(order.status) ? `<div class="customer-delivery"><button type="button" data-confirm-delivery="${escapeHtml(order.id)}">ORDER RECEIVED</button></div>` : ''}${cancellationControl(order)}</article>`).join('');
 }
 
 const addressForm = document.querySelector('#address-form');
@@ -341,7 +378,7 @@ function setCustomerView(view) {
   document.querySelector('#addresses-view').hidden = customerView !== 'addresses';
   document.querySelector('#orders').hidden = !['orders', 'payment'].includes(customerView);
   document.querySelector('#payment-instructions').hidden = customerView !== 'payment';
-  document.querySelector('.order-filters').hidden = customerView !== 'payment';
+  document.querySelector('.order-filters').hidden = !['orders', 'payment'].includes(customerView);
   document.querySelector('#customer-view-title').textContent = customerView === 'payment' ? 'My payment' : 'My orders';
   document.querySelector('#customer-view-eyebrow').textContent = customerView === 'payment' ? 'PAYMENT' : 'ORDERS';
   document.querySelector('#customer-view-description').textContent = customerView === 'payment' ? 'Check your orders and upload your receipt after paying for the products.' : 'Review your purchases and delivery status.';
@@ -517,7 +554,16 @@ async function validProofImage(file) {
   } catch { return false; }
   finally { URL.revokeObjectURL(url); }
 }
-document.querySelector('#orders-list').addEventListener('click', (event) => {
+document.querySelector('#orders-list').addEventListener('click', async (event) => {
+  const received = event.target.closest('[data-confirm-delivery]');
+  if (received) {
+    if (!currentUser || !window.confirm('Confirm that you have received this order?')) return;
+    received.disabled = true; received.textContent = 'CONFIRMING…';
+    const { error } = await supabase.rpc('customer_confirm_order_delivery', { p_order_id: received.dataset.confirmDelivery });
+    if (error) { received.disabled = false; received.textContent = 'ORDER RECEIVED'; orderNotice.textContent = /schema cache|function.*not found/i.test(error.message || '') ? 'Delivery confirmation is not available yet. Please contact the shop.' : (error.message || 'Could not confirm delivery. Please try again.'); orderNotice.dataset.kind = 'error'; return; }
+    orderNotice.textContent = 'Thank you. Your order is marked as delivered.'; orderNotice.dataset.kind = 'success';
+    await loadOrders(); return;
+  }
   const open = event.target.closest('[data-open-cancel]');
   if (open) { const box = open.closest('.customer-cancel'); box.querySelector('form').hidden = false; open.hidden = true; box.querySelector('select').focus(); }
   const close = event.target.closest('[data-close-cancel]');
@@ -568,17 +614,17 @@ document.querySelector('#orders-list').addEventListener('submit', async (event) 
     orderNotice.dataset.kind = 'error';
   } finally { button.disabled = false; button.textContent = 'UPLOAD'; }
 });
-document.querySelector('#sign-out').addEventListener('click', async () => {
+document.querySelectorAll('#sign-out, #mobile-sign-out').forEach((button) => button.addEventListener('click', async () => {
   signingOut = true;
   const { error } = await supabase.auth.signOut();
   if (error) { signingOut = false; say(authErrorMessage(error), 'error'); return; }
   currentUser = null;
-  customerOrders = []; savedAddress = null;
+  customerOrders = []; customerOrdersReady = false; customerOrderRequest++; customerForegroundBusy = false; savedAddress = null;
   accountPanel.hidden = true;
   authCard.hidden = false;
   mode = 'signin'; updateMode(); say('');
   signingOut = false;
-});
+}));
 function startResendCooldown(seconds = 60) {
   clearInterval(resendTimer);
   const button = document.querySelector('#resend-signup-code');
@@ -760,7 +806,7 @@ if (isSupabaseConfigured) {
     } else if (session?.user && !currentUser && mode !== 'recovery' && mode !== 'signup') showAccount(session.user);
     if (!session && currentUser) {
       currentUser = null;
-      customerOrders = [];
+      customerOrders = []; customerOrdersReady = false; customerOrderRequest++; customerForegroundBusy = false;
       accountPanel.hidden = true;
       authCard.hidden = false;
       if (!signingOut) say('Your session ended. Sign in again to access your account.', 'error');
@@ -770,3 +816,14 @@ if (isSupabaseConfigured) {
   window.addEventListener('beforeunload', () => subscription.unsubscribe(), { once: true });
 }
 updateMode();
+
+async function refreshCustomerOrdersInBackground() {
+  if (!currentUser || customerBackgroundBusy || customerForegroundBusy || document.hidden || !navigator.onLine || customerOrderEditing()) return;
+  customerBackgroundBusy = true;
+  try { await loadOrders({ background: true }); }
+  catch { if (!customerRefreshFailed) notifyActivity('Could not update your orders. We will try again.', 'warning'); customerRefreshFailed = true; }
+  finally { customerBackgroundBusy = false; }
+}
+setInterval(refreshCustomerOrdersInBackground, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCustomerOrdersInBackground(); });
+window.addEventListener('online', refreshCustomerOrdersInBackground);
