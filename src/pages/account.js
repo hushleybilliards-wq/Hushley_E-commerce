@@ -191,14 +191,21 @@ let customerBackgroundBusy = false;
 let customerForegroundBusy = false;
 let customerRefreshFailed = false;
 let gcashDetails = null;
+let otherPaymentDetails = {};
 async function loadGcashDetails() {
-  const { data, error } = await supabase.from('gcash_payment_details').select('account_name,account_number').eq('id', true).maybeSingle();
-  gcashDetails = !error && data?.account_name?.trim() && data?.account_number?.trim() ? data : null;
+  const [gcash, other] = await Promise.all([
+    supabase.from('gcash_payment_details').select('account_name,account_number').eq('id', true).maybeSingle(),
+    supabase.from('other_payment_details').select('method,account_name,account_identifier'),
+  ]);
+  gcashDetails = !gcash.error && gcash.data?.account_name?.trim() && gcash.data?.account_number?.trim() ? gcash.data : null;
+  otherPaymentDetails = other.error ? {} : Object.fromEntries((other.data || []).filter((row) => row.account_name?.trim() && row.account_identifier?.trim()).map((row) => [row.method, row]));
 }
 function paymentDetails(order) {
-  if (order.payment_method !== 'gcash') return '<p>Contact the shop for the payment details for this method before paying.</p>';
-  if (!gcashDetails) return '<div class="payment-placeholder"><strong>GCash details are not available yet</strong><p>Contact the shop for the correct recipient before paying.</p></div>';
-  return `<div class="payment-placeholder"><strong>Pay via GCash</strong><table><tbody><tr><th scope="row">Account name</th><td>${escapeHtml(gcashDetails.account_name)}</td></tr><tr><th scope="row">GCash number</th><td>${escapeHtml(gcashDetails.account_number)}</td></tr></tbody></table><p>Check the recipient before sending payment, then upload your receipt below.</p></div>`;
+  const labels = { gcash: ['GCash', 'GCash number'], maribank: ['MariBank', 'Account number'], paypal: ['PayPal', 'PayPal email'], pnb: ['PNB', 'Account number'] };
+  const [label, identifierLabel] = labels[order.payment_method] || ['Payment', 'Account'];
+  const details = order.payment_method === 'gcash' ? gcashDetails && { account_name: gcashDetails.account_name, account_identifier: gcashDetails.account_number } : otherPaymentDetails[order.payment_method];
+  if (!details) return `<div class="payment-placeholder"><strong>${escapeHtml(label)} details are not available yet</strong><p>Contact the shop for the correct recipient before paying.</p></div>`;
+  return `<div class="payment-placeholder"><strong>Pay via ${escapeHtml(label)}</strong><table><tbody><tr><th scope="row">Account name</th><td>${escapeHtml(details.account_name)}</td></tr><tr><th scope="row">${escapeHtml(identifierLabel)}</th><td>${escapeHtml(details.account_identifier)}</td></tr></tbody></table><p>Check the recipient before sending payment, then upload your receipt below.</p></div>`;
 }
 let orderFilter = 'all';
 function setOrderFilter(filter) {
@@ -240,9 +247,11 @@ async function loadOrders(options = {}) {
   }
   customerRefreshFailed = false;
   const changed = customerOrdersReady && JSON.stringify(customerOrders) !== JSON.stringify(data || []);
-  if (options.background && customerOrdersReady && !changed) return;
+  const previousPaymentDetails = JSON.stringify([gcashDetails, otherPaymentDetails]);
   await loadGcashDetails();
   if (request !== customerOrderRequest || currentUser?.id !== userId || (options.background && customerOrderEditing())) return;
+  const paymentDetailsChanged = previousPaymentDetails !== JSON.stringify([gcashDetails, otherPaymentDetails]);
+  if (options.background && customerOrdersReady && !changed && !paymentDetailsChanged) return;
   customerOrders = data || []; customerOrdersReady = true;
   renderCustomerOrders();
   if (options.background && changed) notifyActivity('Your orders have been updated.', 'info');

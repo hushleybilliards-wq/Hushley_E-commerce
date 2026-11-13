@@ -546,6 +546,20 @@
 
 .staff-session .owner-only,.staff-session .admin-sidebar a[href="#analytics"],.staff-session .admin-sidebar a[href="#customers"],.staff-session .admin-sidebar a[href="#shipping"],.staff-session .overview-tile[data-dashboard-view="analytics"],.staff-session .overview-tile[data-dashboard-view="customers"],.staff-session .overview-tile[data-dashboard-view="shipping"],.staff-session .admin-metrics article:first-child,.staff-session .sales-chart-section,.staff-session #gcash-settings,.staff-session [data-delete-product]{display:none!important}
 .staff-session .admin-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.staff-workspace{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.85fr);gap:1rem;align-items:start;margin-top:1rem}
+.payment-method-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem}
+.admin-page .payment-method-buttons button{min-height:48px;font-size:.85rem;letter-spacing:0;background:var(--ui-surface-deep);border-color:var(--ui-border-strong);color:var(--ui-text)}
+.admin-page .payment-method-buttons button:hover{color:var(--ui-primary);border-color:var(--ui-primary)}
+.payment-method-dialog{width:min(620px,calc(100vw - 28px))}
+.payment-method-dialog .product-dialog-actions{position:static;background:none}
+.staff-activity-panel,.staff-accounts-panel{min-width:0;padding:1rem;border:1px solid var(--ui-border);border-radius:var(--ui-radius-md);background:var(--ui-surface-deep)}
+.staff-activity-heading h3,.staff-accounts-panel h3{margin:0}
+.staff-dialog{width:min(600px,calc(100vw - 28px))}
+.staff-dialog[open]{animation:staff-dialog-in 240ms cubic-bezier(.2,.75,.25,1) both}
+.staff-dialog .product-form{gap:.85rem}
+.staff-dialog .product-form>p,.staff-form-wide{grid-column:1/-1}
+.staff-dialog .product-dialog-actions{position:static;padding:.3rem 0 0;background:none}
+@keyframes staff-dialog-in{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .staff-account-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem;border-bottom:1px solid var(--ui-border)}
 #staff-form[hidden]{display:none!important}
 .staff-password-field{display:grid;gap:.4rem;min-width:0}
@@ -566,3 +580,6 @@
 .staff-day li::before{content:'';position:absolute;left:calc(-1rem - 5px);top:1rem;width:8px;height:8px;border-radius:50%;background:var(--ui-primary)}
 .staff-day time{color:var(--ui-primary);font-variant-numeric:tabular-nums}
 @media(max-width:580px){.staff-session .admin-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.staff-workspace{grid-template-columns:minmax(0,1fr)}.staff-activity-panel,.staff-accounts-panel{padding:.8rem}}
+@media(max-width:580px){.payment-method-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.staff-dialog[open]{animation:none}}

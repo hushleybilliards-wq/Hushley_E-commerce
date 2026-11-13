@@ -714,31 +714,46 @@ document.addEventListener('click', async (event) => {
     if (error) say(failureMessage(error, 'Category update'), 'error'); else { say('Category updated.', 'success'); await loadCategories(); await loadProducts(); }
   }
 });
-const gcashForm = $('#gcash-settings-form');
-let gcashSettingsLoaded = false;
-async function loadGcashSettings() {
-  const message = $('.form-status', gcashForm);
-  const button = $('button[type="submit"]', gcashForm);
-  button.disabled = true;
-  const { data, error } = await supabase.from('gcash_payment_details').select('account_name,account_number').eq('id', true).maybeSingle();
-  if (error || !data) { gcashSettingsLoaded = false; message.textContent = 'GCash settings are unavailable. Apply the reviewed database migration and refresh, or contact the site maintainer.'; return; }
-  gcashForm.elements.account_name.value = data.account_name;
-  gcashForm.elements.account_number.value = data.account_number;
-  gcashSettingsLoaded = true;
-  message.textContent = data.account_name ? 'Current details are visible to signed-in customers.' : 'No GCash details saved yet. Customers are asked to contact the shop.';
-  button.disabled = false;
-}
-gcashForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  if (!gcashSettingsLoaded) return;
-  const message = $('.form-status', gcashForm);
-  const accountName = gcashForm.elements.account_name.value.trim();
-  const accountNumber = gcashForm.elements.account_number.value.trim();
-  if (!accountName || !accountNumber) { message.textContent = 'Enter both the account name and GCash number.'; return; }
-  const button = $('button[type="submit"]', gcashForm); button.disabled = true;
-  const { data, error } = await supabase.from('gcash_payment_details').update({ account_name: accountName, account_number: accountNumber }).eq('id', true).select('id').maybeSingle();
-  button.disabled = false;
-  message.textContent = error || !data ? 'Could not save GCash details. Check your access and try again.' : 'GCash details saved. Check them carefully before customers pay.';
+const paymentDialog = $('#payment-method-dialog');
+const paymentForm = $('#payment-settings-form');
+const paymentStatus = $('#payment-settings-status');
+const paymentMethods = { gcash: { label: 'GCash', identifier: 'GCash number', table: 'gcash_payment_details', field: 'account_number', key: 'id', value: true }, maribank: { label: 'MariBank', identifier: 'Account number', table: 'other_payment_details', field: 'account_identifier', key: 'method', value: 'maribank' }, paypal: { label: 'PayPal', identifier: 'PayPal email', table: 'other_payment_details', field: 'account_identifier', key: 'method', value: 'paypal' }, pnb: { label: 'PNB', identifier: 'Account number', table: 'other_payment_details', field: 'account_identifier', key: 'method', value: 'pnb' } };
+let selectedPaymentMethod = null; let paymentRequest = 0; let paymentSaving = false;
+$('#gcash-settings').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-payment-method]');
+  if (!button || !authorized || isStaff) return;
+  const method = paymentMethods[button.dataset.paymentMethod]; if (!method) return;
+  selectedPaymentMethod = method; const request = ++paymentRequest;
+  paymentForm.reset(); $('button[type="submit"]', paymentForm).disabled = true;
+  $('#payment-method-title').textContent = method.label + ' receiving details';
+  $('#payment-identifier-label').textContent = method.identifier;
+  paymentForm.elements.account_identifier.type = method.value === 'paypal' ? 'email' : 'text';
+  paymentForm.elements.account_identifier.maxLength = method.value === true ? 40 : 120;
+  paymentStatus.textContent = 'Loading details…'; paymentDialog.showModal();
+  const { data, error } = await supabase.from(method.table).select('account_name,' + method.field).eq(method.key, method.value).maybeSingle();
+  if (request !== paymentRequest || !paymentDialog.open) return;
+  if (error || !data) { paymentStatus.textContent = 'Details are unavailable. Close and try again.'; return; }
+  paymentForm.elements.account_name.value = data.account_name || '';
+  paymentForm.elements.account_identifier.value = data[method.field] || '';
+  paymentStatus.textContent = data.account_name ? 'Visible to signed-in customers.' : 'No receiving details saved yet.';
+  $('button[type="submit"]', paymentForm).disabled = false; paymentForm.elements.account_name.focus();
+});
+function closePaymentDialog() { if (!paymentSaving) paymentDialog.close(); }
+$('#close-payment-method').addEventListener('click', closePaymentDialog);
+$('#cancel-payment-method').addEventListener('click', closePaymentDialog);
+paymentDialog.addEventListener('cancel', (event) => { if (paymentSaving) event.preventDefault(); });
+paymentDialog.addEventListener('close', () => { paymentRequest++; selectedPaymentMethod = null; paymentForm.reset(); });
+paymentForm.addEventListener('submit', async (event) => {
+  event.preventDefault(); if (paymentSaving || !selectedPaymentMethod || !authorized || isStaff || !paymentForm.reportValidity()) return;
+  const method = selectedPaymentMethod; const accountName = paymentForm.elements.account_name.value.trim(); const identifier = paymentForm.elements.account_identifier.value.trim();
+  if (!accountName || !identifier) { paymentStatus.textContent = 'Enter both receiving details.'; return; }
+  const button = $('button[type="submit"]', paymentForm); button.disabled = true; paymentSaving = true; paymentStatus.textContent = 'Saving details…';
+  try {
+    const { data, error } = await supabase.from(method.table).update({ account_name: accountName, [method.field]: identifier }).eq(method.key, method.value).select(method.key).maybeSingle();
+    if (error || !data) throw error || new Error('No changes saved');
+    paymentStatus.textContent = method.label + ' details saved.';
+  } catch { paymentStatus.textContent = 'Could not save details. Please try again.'; }
+  finally { paymentSaving = false; button.disabled = false; }
 });
 const adminTabs = [...document.querySelectorAll('.admin-sidebar nav a[href^="#"]')];
 let staffActivityRows = [];
@@ -772,7 +787,9 @@ async function loadStaffSection(options = {}) {
     staffActivityRows = activity.data; $('#staff-activity').dataset.loaded = 'true'; renderStaffActivity();
   }
 }
-$('#open-staff-form').addEventListener('click', () => { $('#staff-form').hidden = false; $('#staff-form input').focus(); });
+const staffDialog = $('#staff-dialog');
+const staffForm = $('#staff-form');
+$('#open-staff-form').addEventListener('click', () => { $('#staff-form-status').textContent = ''; staffDialog.showModal(); staffForm.elements.name.focus(); });
 $('#refresh-staff').addEventListener('click', loadStaffSection);
 function hideStaffPassword() {
   $('#staff-password').type = 'password';
@@ -787,20 +804,25 @@ $('#toggle-staff-password').addEventListener('click', (event) => {
   button.setAttribute('aria-pressed', String(visible));
   $('.material-symbols-outlined', button).textContent = visible ? 'visibility_off' : 'visibility';
 });
-$('#cancel-staff-form').addEventListener('click', () => { $('#staff-form').reset(); hideStaffPassword(); $('#staff-form').hidden = true; });
+$('#cancel-staff-form').addEventListener('click', () => staffDialog.close());
+$('#close-staff-dialog').addEventListener('click', () => staffDialog.close());
+staffDialog.addEventListener('cancel', (event) => { if (staffForm.dataset.pending === 'true') event.preventDefault(); });
+staffDialog.addEventListener('close', () => { staffForm.reset(); hideStaffPassword(); $('#staff-form-status').textContent = ''; });
 $('#staff-activity-filter').addEventListener('input', renderStaffActivity);
 $('#staff-activity-date').addEventListener('change', renderStaffActivity);
 $('#staff-activity-type').addEventListener('change', renderStaffActivity);
 $('#staff-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const form = event.currentTarget; const button = $('button[type="submit"]', form); const feedback = $('#staff-feedback');
-  button.disabled = true; feedback.textContent = 'Creating staff account…';
+  const form = event.currentTarget; if (form.dataset.pending === 'true') return;
+  const button = $('button[type="submit"]', form); const feedback = $('#staff-feedback'); const status = $('#staff-form-status');
+  const closeButtons = [$('#cancel-staff-form'), $('#close-staff-dialog')];
+  form.dataset.pending = 'true'; button.disabled = true; closeButtons.forEach((item) => { item.disabled = true; }); status.textContent = 'Creating staff account…';
   try {
     const { data, error } = await supabase.functions.invoke('create-staff', { body: { name: form.elements.name.value.trim(), email: form.elements.email.value.trim(), password: form.elements.password.value } });
     if (error) { let message = 'Could not create the staff account. Check the details and try again.'; try { message = (await error.context?.json())?.error || message; } catch {} throw new Error(message); }
-    form.reset(); hideStaffPassword(); form.hidden = true; feedback.textContent = data?.verification_sent ? 'Account created. Enter the code sent to the staff email below, and share the password privately.' : 'Account created, but the verification email could not be sent. Use Resend code below.'; await loadStaffSection();
-  } catch (error) { feedback.textContent = error.message; }
-  finally { button.disabled = false; }
+    staffDialog.close(); feedback.textContent = data?.verification_sent ? 'Account created. Enter the code sent to the staff email below, and share the password privately.' : 'Account created, but the verification email could not be sent. Use Resend code below.'; await loadStaffSection();
+  } catch (error) { status.textContent = error.message; }
+  finally { form.dataset.pending = 'false'; button.disabled = false; closeButtons.forEach((item) => { item.disabled = false; }); }
 });
 $('#staff-list').addEventListener('click', async (event) => {
   const resend = event.target.closest('[data-resend-staff-code]');
@@ -855,7 +877,6 @@ function showAdminView(view, updateHash = false) {
   currentAdminView = view;
   document.querySelector('.admin-main').classList.toggle('is-overview', view === 'overview');
   if (view === 'payments') {
-    if (authorized && !isStaff && !gcashSettingsLoaded) loadGcashSettings();
     const pending = ordersCache.filter((order) => order.status === 'payment_verification' && order.payments?.some((payment) => payment.status === 'pending' && payment.proof_path));
     if (!pending.some((order) => order.id === selectedOrderId)) selectedOrderId = pending[0]?.id || null;
   } else if (view === 'overview' && !selectedOrderId) selectedOrderId = ordersCache[0]?.id || null;

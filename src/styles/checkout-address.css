@@ -28,6 +28,14 @@
 .checkout-item-info { min-width:0; }
 .checkout-item-info .checkout-item-name { display:block; color:var(--ui-text); font-size:14px; line-height:1.4; white-space:normal; overflow-wrap:anywhere; }
 .checkout-item-info small { display:block; margin-top:5px; color:var(--ui-text-muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; }
+.checkout-quantity { display:flex; align-items:center; gap:0; flex-wrap:wrap; margin-top:9px; }
+.checkout-quantity button:not(.checkout-remove), .checkout-quantity span { display:grid; place-items:center; width:32px; height:32px; border:1px solid var(--ui-border); background:var(--ui-surface-deep); color:var(--ui-text); font-size:16px; }
+.checkout-quantity button:not(.checkout-remove) { cursor:pointer; }
+.checkout-quantity button:disabled { opacity:.4; cursor:not-allowed; }
+.checkout-quantity span { width:36px; border-inline:0; font-size:13px; }
+.checkout-quantity .checkout-remove { margin-left:10px; padding:6px 0; border:0; background:transparent; color:var(--ui-text-muted); font-size:12px; cursor:pointer; }
+.checkout-quantity .checkout-remove:hover { color:#f19292; }
+.checkout-item-info .checkout-stock.is-warning { color:#f19292; }
 .checkout-order .checkout-line-total { color:var(--ui-text); font-size:13px; white-space:nowrap; }
 .checkout-order .checkout-summary { display:flex; align-items:baseline; gap:12px; justify-content:space-between; margin:16px 0 8px; padding:14px 0; border:0; border-top:1px solid var(--ui-border); border-bottom:1px solid var(--ui-border); border-radius:0; background:transparent; color:var(--ui-text-muted); font-size:13px; }
 .checkout-order .checkout-summary strong { color:var(--ui-primary); font-size:18px; text-align:right; }

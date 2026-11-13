@@ -27,7 +27,7 @@ try {
     create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;
     grant usage on schema public,auth,storage to anon,authenticated;
     grant select,insert,update,delete on storage.objects to anon,authenticated;`);
-  for (const file of ['20261108031340_hushley_commerce_auth.sql','20261109105526_hushley_shipping_options_payment_guards.sql','20261111165241_product_payment_separate_shipping.sql','20261111173322_admin_order_guard_and_date_reference.sql','20261111173648_admin_order_guard_live_role.sql','20261112074024_hushley_gcash_payment_details.sql','20261113164358_staff_access_and_audit.sql','20261113172701_verify_staff_email.sql','20261113185447_staff_shipping_recording.sql','20261113190010_staff_shipping_activity.sql']) {
+  for (const file of ['20261108031340_hushley_commerce_auth.sql','20261109105526_hushley_shipping_options_payment_guards.sql','20261111165241_product_payment_separate_shipping.sql','20261111173322_admin_order_guard_and_date_reference.sql','20261111173648_admin_order_guard_live_role.sql','20261112074024_hushley_gcash_payment_details.sql','20261113164358_staff_access_and_audit.sql','20261113172701_verify_staff_email.sql','20261113185447_staff_shipping_recording.sql','20261113190010_staff_shipping_activity.sql','20261113192046_payment_receiving_methods.sql']) {
     await db.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
   await q(`insert into auth.users(id,email,raw_app_meta_data) values ($1,'staff@gmail.com','{"role":"staff"}'),($2,'owner@gmail.com','{"role":"admin"}'),($3,'customer@gmail.com','{}')`, [staff, owner, customer]);
@@ -41,6 +41,8 @@ try {
   await as(staff,'staff');
   assert.equal((await q('select public.staff_current_access() as active')).rows[0].active, true);
   assert.equal((await q('select * from public.gcash_payment_details')).rows.length, 0);
+  assert.equal((await q('select * from public.other_payment_details')).rows.length, 0);
+  assert.equal((await q("update public.other_payment_details set account_name='Changed', account_identifier='123' where method='pnb' returning method")).rows.length, 0);
   assert.equal((await q("update public.gcash_payment_details set account_name='Changed' where id=true returning id")).rows.length, 0);
   await assert.rejects(q('select * from public.owner_staff_accounts()'), /Owner access required/);
   await assert.rejects(q('select * from public.owner_staff_activity()'), /Owner access required/);
@@ -83,6 +85,9 @@ try {
   await q("select public.admin_confirm_order_shipping($1,'Luzon',300,'Cue rate')", [legacyOrder]);
   assert.equal((await q('select shipping_confirmed from public.orders where id=$1', [legacyOrder])).rows[0].shipping_confirmed, true);
   await as(owner,'admin');
+  assert.equal((await q("update public.other_payment_details set account_name='Shop', account_identifier='123' where method='pnb' returning method")).rows[0].method, 'pnb');
+  await assert.rejects(q("update public.other_payment_details set account_identifier='' where method='pnb'"), /check constraint/);
+  await assert.rejects(q("insert into public.other_payment_details(method) values ('other')"), /permission denied/);
   await q("select public.admin_record_separate_shipping($1,300,'Owner review')", [orderId]);
   const activities = (await q('select * from public.owner_staff_activity()')).rows;
   assert.ok(activities.every((row) => row.actor_name === 'Alex'));
@@ -101,6 +106,10 @@ try {
   await as(customer);
   await assert.rejects(q("select public.admin_record_separate_shipping($1,300,'Customer')", [orderId]), /Active staff or administrator access required/);
   assert.equal((await q('select * from public.gcash_payment_details')).rows.length, 1);
+  assert.equal((await q('select * from public.other_payment_details')).rows.length, 3);
+  assert.equal((await q("update public.other_payment_details set account_name='Changed', account_identifier='123' where method='pnb' returning method")).rows.length, 0);
   await assert.rejects(q('select * from public.owner_staff_activity()'), /Owner access required/);
+  await db.exec('reset role; set role anon');
+  await assert.rejects(q('select * from public.other_payment_details'), /permission denied/);
   console.log('PASS: staff shipping permissions, J&T and Lalamove guards, legacy orders, payment review and access revocation');
 } finally { await db.close(); }

@@ -6,8 +6,8 @@ try { cartEntries = new Map(JSON.parse(localStorage.getItem('hushley-cart') || '
 catch { localStorage.removeItem('hushley-cart'); cartEntries = new Map(); }
 let checkoutSelection = null;
 try { checkoutSelection = JSON.parse(sessionStorage.getItem('hushley-checkout') || 'null'); } catch { sessionStorage.removeItem('hushley-checkout'); }
-const checkoutKeys = checkoutSelection?.mode === 'cart' && Array.isArray(checkoutSelection.keys) ? checkoutSelection.keys : [...cartEntries.keys()];
-const items = checkoutSelection?.mode === 'direct' && Array.isArray(checkoutSelection.items) ? checkoutSelection.items : checkoutKeys.filter((key) => cartEntries.has(key)).map((key) => cartEntries.get(key));
+const checkoutKeys = (checkoutSelection?.mode === 'cart' && Array.isArray(checkoutSelection.keys) ? checkoutSelection.keys : [...cartEntries.keys()]).filter((key) => cartEntries.has(key));
+const items = checkoutSelection?.mode === 'direct' && Array.isArray(checkoutSelection.items) ? checkoutSelection.items : checkoutKeys.map((key) => cartEntries.get(key));
 const itemHost = document.querySelector('#checkout-items');
 const gate = document.querySelector('#checkout-gate');
 const form = document.querySelector('#checkout-form');
@@ -16,19 +16,94 @@ const currency = (value) => new Intl.NumberFormat('en-PH', { style: 'currency', 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
 const formatOptions = (options = {}) => Object.entries(options).map(([name, value]) => `${escapeHtml(name)}: ${escapeHtml(value)}`).join(' · ');
 function showGate(message) { gate.hidden = false; gate.textContent = message; }
+let availableStock = new Map();
+let stockKnown = false;
+let placingOrder = false;
+function productQuantity(productId) {
+  return items.reduce((total, line) => total + (line.product.id === productId ? Number(line.quantity) : 0), 0);
+}
+function persistCheckout() {
+  if (checkoutSelection?.mode === 'direct') {
+    sessionStorage.setItem('hushley-checkout', JSON.stringify({ ...checkoutSelection, items }));
+  } else {
+    let currentCart;
+    try { currentCart = new Map(JSON.parse(localStorage.getItem('hushley-cart') || '[]')); } catch { currentCart = new Map(); }
+    for (let index = 0; index < checkoutKeys.length; index++) {
+      const key = checkoutKeys[index];
+      if (currentCart.has(key)) currentCart.set(key, items[index]);
+    }
+    localStorage.setItem('hushley-cart', JSON.stringify([...currentCart]));
+    sessionStorage.setItem('hushley-checkout', JSON.stringify({ mode: 'cart', keys: checkoutKeys }));
+  }
+}
+function renderItems() {
+  itemHost.innerHTML = items.length ? items.map(({ product, quantity, selected_options, options }, index) => {
+    const choices = selected_options || options || {};
+    const hasPrice = product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price));
+    const photo = product.image_urls?.find((url) => typeof url === 'string' && url.trim());
+    const available = availableStock.get(product.id) ?? 0;
+    const selected = productQuantity(product.id);
+    const stockMessage = !stockKnown ? 'Availability checked when you place your order.' : available === 0 ? 'Out of stock. Remove this item to continue.' : selected > available ? `Only ${available} available across your selected variations. Reduce the quantity.` : `${available} available`;
+    const maxReached = Number(quantity) >= 25 || (stockKnown && selected >= available);
+    return `<div class="checkout-item">${photo ? `<img class="checkout-item-photo" src="${escapeHtml(photo)}" alt="" />` : '<div class="checkout-item-photo checkout-photo-placeholder" aria-hidden="true">—</div>'}<div class="checkout-item-info"><strong class="checkout-item-name">${escapeHtml(product.name)}</strong>${Object.keys(choices).length ? `<small class="checkout-options">${formatOptions(choices)}</small>` : ''}${hasPrice ? `<small>${currency(product.price)} each</small>` : ''}<div class="checkout-quantity" aria-label="Quantity for ${escapeHtml(product.name)}"><button type="button" data-quantity-index="${index}" data-delta="-1" aria-label="Decrease quantity of ${escapeHtml(product.name)}" ${Number(quantity) <= 1 || placingOrder ? 'disabled' : ''}>−</button><span aria-live="polite">${Number(quantity)}</span><button type="button" data-quantity-index="${index}" data-delta="1" aria-label="Increase quantity of ${escapeHtml(product.name)}" ${maxReached || placingOrder ? 'disabled' : ''}>+</button><button type="button" class="checkout-remove" data-remove-index="${index}" ${placingOrder ? 'disabled' : ''} aria-label="Remove ${escapeHtml(product.name)}">Remove</button></div><small class="checkout-stock ${stockKnown && selected > available ? 'is-warning' : ''}">${escapeHtml(stockMessage)}</small></div><strong class="checkout-line-total">${hasPrice ? currency(Number(product.price) * Number(quantity)) : 'TBC'}</strong></div>`;
+  }).join('') : '<p class="empty-orders">Your cart is empty.</p>';
+  const subtotal = items.reduce((sum, line) => sum + (Number(line.product.price) || 0) * Number(line.quantity), 0);
+  const itemCount = items.reduce((sum, item) => sum + Number(item.quantity), 0);
+  document.querySelector('#checkout-count').textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
+  document.querySelector('#checkout-subtotal').textContent = !items.length ? '—' : items.every(({ product }) => product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price))) ? currency(subtotal) : 'To be confirmed';
+}
+async function refreshStock() {
+  if (!isSupabaseConfigured || !items.length) return;
+  const ids = [...new Set(items.map(({ product }) => product.id))];
+  const { data, error } = await supabase.from('products').select('id,stock_quantity,reserved_quantity,is_active').in('id', ids);
+  if (error) { stockKnown = false; renderItems(); return; }
+  availableStock = new Map((data || []).map((product) => [product.id, product.is_active ? Math.max(0, Number(product.stock_quantity) - Number(product.reserved_quantity)) : 0]));
+  stockKnown = true;
+  renderItems();
+}
+itemHost.addEventListener('click', (event) => {
+  if (placingOrder) return;
+  const change = event.target.closest('[data-quantity-index]');
+  const remove = event.target.closest('[data-remove-index]');
+  if (change) {
+    const line = items[Number(change.dataset.quantityIndex)];
+    if (!line) return;
+    const next = Number(line.quantity) + Number(change.dataset.delta);
+    if (next < 1 || next > 25 || (next > Number(line.quantity) && stockKnown && productQuantity(line.product.id) >= (availableStock.get(line.product.id) ?? 0))) return;
+    line.quantity = next;
+    status.textContent = '';
+    persistCheckout(); renderItems();
+    const replacement = itemHost.querySelector(`[data-quantity-index="${change.dataset.quantityIndex}"][data-delta="${change.dataset.delta}"]`);
+    if (replacement && !replacement.disabled) replacement.focus();
+    else itemHost.querySelector(`[data-remove-index="${change.dataset.quantityIndex}"]`)?.focus();
+  } else if (remove) {
+    const index = Number(remove.dataset.removeIndex);
+    if (!items[index]) return;
+    if (checkoutSelection?.mode !== 'direct') {
+      let currentCart;
+      try { currentCart = new Map(JSON.parse(localStorage.getItem('hushley-cart') || '[]')); } catch { currentCart = new Map(); }
+      currentCart.delete(checkoutKeys[index]);
+      localStorage.setItem('hushley-cart', JSON.stringify([...currentCart]));
+      cartEntries.delete(checkoutKeys[index]); checkoutKeys.splice(index, 1);
+    }
+    items.splice(index, 1); status.textContent = ''; persistCheckout(); renderItems();
+    if (!items.length) { form.hidden = true; showGate('Add gear to your cart before checkout.'); document.querySelector('#signin-link').hidden = true; }
+  }
+});
 const connection = document.querySelector('#checkout-connection');
 function updateConnection() {
   connection.hidden = navigator.onLine;
   connection.textContent = navigator.onLine ? '' : 'You are offline. Reconnect before placing your order; your cart is saved on this device.';
   connection.dataset.kind = 'error';
-  if (form) form.querySelector('button[type="submit"]').disabled = !navigator.onLine;
+  if (form) form.querySelector('button[type="submit"]').disabled = !navigator.onLine || placingOrder;
 }
 window.addEventListener('offline', updateConnection);
 window.addEventListener('online', () => {
   connection.hidden = false;
   connection.textContent = 'Connection restored. You can continue checkout.';
   connection.dataset.kind = 'success';
-  form.querySelector('button[type="submit"]').disabled = false;
+  form.querySelector('button[type="submit"]').disabled = placingOrder;
+  refreshStock();
 });
 updateConnection();
 
@@ -234,16 +309,8 @@ document.querySelector('#change-delivery-address').addEventListener('click', asy
   } catch { if (version === requestVersion) addressStatus.textContent = 'Address choices could not be loaded. Your saved address remains available.'; }
 });
 
-itemHost.innerHTML = items.length ? items.map(({ product, quantity, selected_options, options }) => {
-  const choices = selected_options || options || {};
-  const hasPrice = product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price));
-  const photo = product.image_urls?.find((url) => typeof url === 'string' && url.trim());
-  return `<div class="checkout-item">${photo ? `<img class="checkout-item-photo" src="${escapeHtml(photo)}" alt="" />` : '<div class="checkout-item-photo checkout-photo-placeholder" aria-hidden="true">—</div>'}<div class="checkout-item-info"><strong class="checkout-item-name">${escapeHtml(product.name)}</strong>${Object.keys(choices).length ? `<small class="checkout-options">${formatOptions(choices)}</small>` : ''}<small>Qty ${Number(quantity)}${hasPrice ? ` · ${currency(product.price)} each` : ''}</small></div><strong class="checkout-line-total">${hasPrice ? currency(Number(product.price) * Number(quantity)) : 'TBC'}</strong></div>`;
-}).join('') : '<p class="empty-orders">Your cart is empty.</p>';
-const subtotal = items.reduce((sum, line) => sum + (Number(line.product.price) || 0) * line.quantity, 0);
-const itemCount = items.reduce((sum, item) => sum + Number(item.quantity), 0);
-document.querySelector('#checkout-count').textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
-document.querySelector('#checkout-subtotal').textContent = !items.length ? '—' : items.every(({ product }) => product.price !== null && product.price !== undefined && Number.isFinite(Number(product.price))) ? currency(subtotal) : 'To be confirmed';
+renderItems();
+refreshStock();
 
 if (!items.length) {
   showGate('Add gear to your cart before checkout.');
@@ -284,6 +351,9 @@ if (!items.length) {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (placingOrder || !items.length) return;
+  placingOrder = true;
+  renderItems();
   status.textContent = 'Placing your order…';
   const button = form.querySelector('button[type="submit"]');
   button.disabled = true;
@@ -292,6 +362,10 @@ form.addEventListener('submit', async (event) => {
   const slowTimer = setTimeout(() => { status.textContent = 'This is taking longer than usual. Keep this page open while we finish placing your order.'; status.dataset.kind = ''; }, 7000);
   const values = new FormData(form);
   try {
+    await refreshStock();
+    if (stockKnown && items.some(({ product }) => productQuantity(product.id) > (availableStock.get(product.id) ?? 0))) {
+      throw new Error('Some quantities exceed the available stock. Reduce or remove the highlighted items.');
+    }
     const payload = {
       p_customer_name: String(values.get('customer_name')).trim(),
       p_email: String(values.get('email')).trim(),
@@ -340,9 +414,12 @@ form.addEventListener('submit', async (event) => {
     const detail = error.message || 'We could not place your order.';
     status.textContent = /permission|row-level|not authorized/i.test(detail) ? 'Access was denied. Your session may have expired; sign in again and retry.' : /expired|jwt/i.test(detail) ? 'Your session expired. Sign in again and retry checkout.' : `${detail} You can review the details and retry.`;
     status.dataset.kind = 'error';
+    if (/stock|unavailable/i.test(detail)) await refreshStock();
     button.disabled = !navigator.onLine;
   } finally {
     clearTimeout(slowTimer);
+    placingOrder = false;
+    renderItems();
     button.textContent = button.dataset.label;
   }
 });
