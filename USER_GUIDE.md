@@ -21,8 +21,8 @@ On a phone, use the buttons at the bottom to open the shop, cart, orders, and pr
 
 ### Pay and follow your order
 
-1. Open **Orders** or **My Payment** and find your order.
-2. Follow the order's payment instructions. For the current process, pay for the products first and upload a clear picture of your payment proof.
+1. After checkout, your new order opens under **My Orders**. To return later, open **Orders** and find it there.
+2. Select **Upload payment proof** and follow the order's payment instructions. For the current process, pay for the products first and upload a clear picture of your payment proof.
 3. Wait for the shop to check and approve your payment. Staff will contact you separately about the delivery cost and payment.
 4. Return to **Orders** to check the status and any courier tracking number.
 5. When the order arrives, tap **Order received** if the option is available. If it is unavailable, contact the shop.

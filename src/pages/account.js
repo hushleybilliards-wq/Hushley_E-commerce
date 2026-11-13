@@ -2,6 +2,7 @@ import { notifyActivity } from '../lib/activity-island.js';
 import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
 import { passwordIssue } from '../lib/password.js';
 import { isGmailSignupEmail } from '../lib/signup.js';
+import { matchesOrderFilter, paymentAction, canCancelOrder } from '../lib/customer-orders.js';
 
 const form = document.querySelector('#auth-form');
 const authCard = document.querySelector('#auth-card');
@@ -168,7 +169,7 @@ async function showAccount(user) {
   if (next === '/checkout' && mode !== 'recovery') { location.replace('/checkout'); return; }
   authCard.hidden = true;
   accountPanel.hidden = false;
-  setCustomerView(params.has('placed') ? 'payment' : location.hash === '#payment' ? 'payment' : location.hash === '#orders' ? 'orders' : location.hash === '#addresses' ? 'addresses' : 'account');
+  setCustomerView(params.has('placed') || location.hash === '#payment' ? 'payment' : location.hash === '#orders' ? 'orders' : location.hash === '#addresses' ? 'addresses' : 'account');
   const identity = user.email_confirmed_at && user.email ? user.email : user.phone_confirmed_at && user.phone ? user.phone : user.email || user.phone || '';
   document.querySelector('#account-email').textContent = identity || 'No sign-in identity available';
   document.querySelector('#identity-status').textContent = (user.email_confirmed_at && identity === user.email) || (user.phone_confirmed_at && identity === user.phone) ? 'Verified sign-in contact' : 'Sign-in contact';
@@ -200,6 +201,16 @@ function paymentDetails(order) {
   return `<div class="payment-placeholder"><strong>Pay via GCash</strong><table><tbody><tr><th scope="row">Account name</th><td>${escapeHtml(gcashDetails.account_name)}</td></tr><tr><th scope="row">GCash number</th><td>${escapeHtml(gcashDetails.account_number)}</td></tr></tbody></table><p>Check the recipient before sending payment, then upload your receipt below.</p></div>`;
 }
 let orderFilter = 'all';
+function setOrderFilter(filter) {
+  orderFilter = filter;
+  document.querySelectorAll('[data-order-filter]').forEach((item) => { const active = item.dataset.orderFilter === filter; item.classList.toggle('active', active); item.setAttribute('aria-pressed', String(active)); });
+}
+function clearPlacedOrder(orderId) {
+  const url = new URL(location.href);
+  if (url.searchParams.get('placed') !== orderId) return;
+  url.searchParams.delete('placed'); url.searchParams.delete('address_save'); url.hash = 'orders';
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
 function customerOrderEditing() {
   const host = document.querySelector('#orders-list');
   return !!(host.contains(document.activeElement) || host.querySelector('[data-cancel-form]:not([hidden]), .proof-upload button:disabled, [data-confirm-delivery]:disabled') || [...host.querySelectorAll('.proof-upload input[type=file]')].some((input) => input.files?.length));
@@ -239,14 +250,20 @@ async function loadOrders(options = {}) {
 }
 function renderCustomerOrders() {
   const host = document.querySelector('#orders-list');
-  const groups = { 'to-pay': ['pending_payment', 'payment_rejected'], shipped: ['shipped', 'in_transit'], delivered: ['delivered'], cancelled: ['cancelled'] };
   const statusLabel = (status) => ({ pending_payment: 'To pay', payment_rejected: 'Payment needs attention', payment_verification: 'Payment under review', payment_confirmed: 'Preparing', processing: 'Preparing', ready_to_ship: 'Preparing', shipped: 'Shipped', in_transit: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' }[status] || status.replaceAll('_', ' '));
   const query = document.querySelector('#customer-order-search').value.trim().toLowerCase();
-  const data = customerOrders.filter((order) => (orderFilter === 'all' || groups[orderFilter]?.includes(order.status)) && (!query || [order.order_number, ...(order.order_items || []).map((item) => item.product_name)].some((value) => String(value || '').toLowerCase().includes(query))));
+  const data = customerOrders.filter((order) => matchesOrderFilter(order, orderFilter) && (!query || [order.order_number, ...(order.order_items || []).map((item) => item.product_name)].some((value) => String(value || '').toLowerCase().includes(query))));
   if (!data.length) {
     host.innerHTML = '<p class="empty-orders">No orders match your selection.</p>';
     return;
   }
+  const renderProofAction = (order) => {
+    const action = paymentAction(order);
+    if (action === 'none') return '';
+    if (action !== 'upload') return `<p class="proof-waiting">${action === 'expired' ? 'This order’s payment hold has expired. Contact the shop before paying.' : 'The shop will confirm shipping before you pay for this order.'}</p>`;
+    const expanded = new URLSearchParams(location.search).get('placed') === String(order.id);
+    return `<details class="payment-action" ${expanded ? 'open' : ''}><summary>Upload payment proof</summary>${paymentDetails(order)}<form class="proof-upload" data-proof-order="${escapeHtml(order.id)}"><label>Upload payment proof<input type="file" accept="image/jpeg,image/png,image/webp" required /></label><small>JPEG, PNG or WebP · maximum 10 MB.</small><p class="proof-file-status" role="status" aria-live="polite"></p><button class="admin-action" type="submit">SUBMIT PAYMENT PROOF</button><small>Staff will check your payment manually before approving the order.</small></form></details>`;
+  };
   const money = (value) => new Intl.NumberFormat('en-PH', { style:'currency', currency:'PHP' }).format(value);
   const nextStep = (order) => {
     if (order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date()) return 'Your payment hold has expired. Contact the shop before paying so staff can help you place a new order.';
@@ -259,8 +276,8 @@ function renderCustomerOrders() {
     if (['shipped', 'in_transit'].includes(order.status)) return 'Your order has been shipped. Confirm receipt once it arrives.';
     return 'Payment has been approved. Follow the order status and tracking details below.';
   };
-  const cancellationControl = (order) => customerView === 'orders' && order.status === 'pending_payment' && !(order.payments || []).length ? `<div class="customer-cancel"><button type="button" data-open-cancel="${escapeHtml(order.id)}">Cancel order</button><form data-cancel-form="${escapeHtml(order.id)}" hidden><label>Reason for cancellation<select name="reason" required><option value="">Choose a reason</option><option>Changed my mind</option><option>Ordered the wrong item</option><option>Duplicate order</option><option>Other</option></select></label><small>Only cancel if you have not paid. If you already paid, contact the shop; refunds are handled manually.</small><div><button type="submit">Confirm cancellation</button><button type="button" data-close-cancel>Keep order</button></div></form></div>` : '';
-  host.innerHTML = data.map((order) => `<article class="order-row"><div class="order-card-header"><div><span class="order-card-label">ORDER</span><strong>${escapeHtml(order.order_number)}</strong><span>${new Date(order.created_at).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })}</span></div><span class="status-pill status-${escapeHtml(order.status)}">${escapeHtml(statusLabel(order.status))}</span></div><p class="order-next-step">${escapeHtml(nextStep(order))}</p><div class="order-items">${(order.order_items || []).map((item) => `<div class="order-item-line">${item.products?.image_urls?.[0] ? `<img class="order-item-photo" src="${escapeHtml(item.products.image_urls[0])}" alt="${escapeHtml(item.product_name)}" loading="lazy"/>` : `<span class="order-item-photo order-photo-missing" aria-label="Product image unavailable">—</span>`}<div><strong>${escapeHtml(item.product_name)} × ${Number(item.quantity)}</strong>${Object.keys(item.selected_options || {}).length ? `<span>${escapeHtml(Object.entries(item.selected_options).map(([key, value]) => `${key}: ${value}`).join(' · '))}</span>` : ''}</div></div>`).join('')}</div><div class="order-summary"><span>Payment <strong>${escapeHtml(order.payment_method.toUpperCase())}</strong></span><span>Courier <strong>${escapeHtml(order.courier || 'To be confirmed')}</strong></span><span>Shipping <strong>${order.payment_scope === 'products_only' ? (order.separate_shipping_quote != null ? escapeHtml(money(order.separate_shipping_quote)) + ' (separate)' : 'Shop will contact you') : order.shipping_confirmed ? escapeHtml(money(order.shipping_fee)) : 'To be confirmed'}</strong></span><span>${order.payment_scope === 'products_only' ? 'Product payment' : order.shipping_confirmed ? 'Total' : 'Subtotal'} <strong>${escapeHtml(money(order.payment_scope === 'products_only' || order.shipping_confirmed ? order.total : order.subtotal))}</strong></span></div>${order.tracking_number ? `<p class="order-tracking">Tracking number: <strong>${escapeHtml(order.tracking_number)}</strong></p>` : ''}${customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) && (order.shipping_confirmed || order.payment_scope === 'products_only') && !(order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date()) ? `${paymentDetails(order)}<form class="proof-upload" data-proof-order="${escapeHtml(order.id)}"><label>Upload payment proof<input type="file" accept="image/jpeg,image/png,image/webp" required /></label><small>JPEG, PNG or WebP · maximum 10 MB. A clear, cropped screenshot around 0.5–2 MB is recommended.</small><p class="proof-file-status" role="status" aria-live="polite"></p><button class="admin-action" type="submit">SUBMIT PAYMENT PROOF</button><small>Staff will check your payment manually before approving the order.</small></form>` : customerView === 'payment' && ['pending_payment','payment_rejected'].includes(order.status) ? `<div class="proof-waiting"><button type="button" disabled>UPLOAD</button><small>${order.status === 'pending_payment' && order.hold_expires_at && new Date(order.hold_expires_at) <= new Date() ? 'This order’s payment hold has expired. Contact the shop before paying.' : 'Available after the shop confirms your shipping fee. Select Refresh orders to check again.'}</small></div>` : ''}${customerView === 'orders' && ['shipped', 'in_transit'].includes(order.status) ? `<div class="customer-delivery"><button type="button" data-confirm-delivery="${escapeHtml(order.id)}">ORDER RECEIVED</button></div>` : ''}${cancellationControl(order)}</article>`).join('');
+  const cancellationControl = (order) => canCancelOrder(order) ? `<div class="customer-cancel"><button type="button" data-open-cancel="${escapeHtml(order.id)}">Cancel order</button><form data-cancel-form="${escapeHtml(order.id)}" hidden><label>Reason for cancellation<select name="reason" required><option value="">Choose a reason</option><option>Changed my mind</option><option>Ordered the wrong item</option><option>Duplicate order</option><option>Other</option></select></label><small>Only cancel if you have not paid. If you already paid, contact the shop; refunds are handled manually.</small><div><button type="submit">Confirm cancellation</button><button type="button" data-close-cancel>Keep order</button></div></form></div>` : '';
+  host.innerHTML = data.map((order) => `<article class="order-row"><div class="order-card-header"><div><span class="order-card-label">ORDER</span><strong>${escapeHtml(order.order_number)}</strong><span>${new Date(order.created_at).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' })}</span></div><span class="status-pill status-${escapeHtml(order.status)}">${escapeHtml(statusLabel(order.status))}</span></div><p class="order-next-step">${escapeHtml(nextStep(order))}</p><div class="order-items">${(order.order_items || []).map((item) => `<div class="order-item-line">${item.products?.image_urls?.[0] ? `<img class="order-item-photo" src="${escapeHtml(item.products.image_urls[0])}" alt="${escapeHtml(item.product_name)}" loading="lazy"/>` : `<span class="order-item-photo order-photo-missing" aria-label="Product image unavailable">—</span>`}<div><strong>${escapeHtml(item.product_name)} × ${Number(item.quantity)}</strong>${Object.keys(item.selected_options || {}).length ? `<span>${escapeHtml(Object.entries(item.selected_options).map(([key, value]) => `${key}: ${value}`).join(' · '))}</span>` : ''}</div></div>`).join('')}</div><div class="order-summary"><span>Payment <strong>${escapeHtml(order.payment_method.toUpperCase())}</strong></span><span>Courier <strong>${escapeHtml(order.courier || 'To be confirmed')}</strong></span><span>Shipping <strong>${order.payment_scope === 'products_only' ? (order.separate_shipping_quote != null ? escapeHtml(money(order.separate_shipping_quote)) + ' (separate)' : 'Shop will contact you') : order.shipping_confirmed ? escapeHtml(money(order.shipping_fee)) : 'To be confirmed'}</strong></span><span>${order.payment_scope === 'products_only' ? 'Product payment' : order.shipping_confirmed ? 'Total' : 'Subtotal'} <strong>${escapeHtml(money(order.payment_scope === 'products_only' || order.shipping_confirmed ? order.total : order.subtotal))}</strong></span></div>${order.tracking_number ? `<p class="order-tracking">Tracking number: <strong>${escapeHtml(order.tracking_number)}</strong></p>` : ''}${renderProofAction(order)}${['shipped', 'in_transit'].includes(order.status) ? `<div class="customer-delivery"><button type="button" data-confirm-delivery="${escapeHtml(order.id)}">ORDER RECEIVED</button></div>` : ''}${cancellationControl(order)}</article>`).join('');
 }
 
 const addressForm = document.querySelector('#address-form');
@@ -373,24 +390,24 @@ document.querySelector('#saved-address').addEventListener('click', async (event)
 });
 
 function setCustomerView(view) {
-  customerView = ['account', 'addresses', 'orders', 'payment'].includes(view) ? view : 'account';
+  const paymentLink = view === 'payment';
+  customerView = paymentLink ? 'orders' : ['account', 'addresses', 'orders'].includes(view) ? view : 'account';
   document.querySelector('#account-profile-view').hidden = customerView !== 'account';
   document.querySelector('#addresses-view').hidden = customerView !== 'addresses';
-  document.querySelector('#orders').hidden = !['orders', 'payment'].includes(customerView);
-  document.querySelector('#payment-instructions').hidden = customerView !== 'payment';
-  document.querySelector('.order-filters').hidden = !['orders', 'payment'].includes(customerView);
-  document.querySelector('#customer-view-title').textContent = customerView === 'payment' ? 'My payment' : 'My orders';
-  document.querySelector('#customer-view-eyebrow').textContent = customerView === 'payment' ? 'PAYMENT' : 'ORDERS';
-  document.querySelector('#customer-view-description').textContent = customerView === 'payment' ? 'Check your orders and upload your receipt after paying for the products.' : 'Review your purchases and delivery status.';
+  document.querySelector('#orders').hidden = customerView !== 'orders';
+  document.querySelector('#payment-instructions').hidden = true;
+  document.querySelector('.order-filters').hidden = customerView !== 'orders';
+  document.querySelector('#customer-view-title').textContent = 'My orders';
+  document.querySelector('#customer-view-eyebrow').textContent = 'ORDERS';
+  document.querySelector('#customer-view-description').textContent = 'Review your orders, upload payment proof, and follow delivery.';
   document.querySelectorAll('[data-account-view]').forEach((link) => { const active = link.dataset.accountView === customerView; link.classList.toggle('selected', active); if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
-  if (customerView !== 'payment') { orderFilter = 'all'; document.querySelectorAll('[data-order-filter]').forEach((item) => { const active = item.dataset.orderFilter === 'all'; item.classList.toggle('active', active); item.setAttribute('aria-pressed', String(active)); }); }
+  setOrderFilter(paymentLink ? 'to-pay' : 'all');
   if (currentUser) renderCustomerOrders();
 }
 document.querySelectorAll('[data-account-view]').forEach((link) => link.addEventListener('click', (event) => { event.preventDefault(); history.replaceState(null, '', `#${link.dataset.accountView}`); setCustomerView(link.dataset.accountView); }));
 
 document.querySelectorAll('[data-order-filter]').forEach((button) => button.addEventListener('click', () => {
-  orderFilter = button.dataset.orderFilter;
-  document.querySelectorAll('[data-order-filter]').forEach((item) => { const active = item === button; item.classList.toggle('active', active); item.setAttribute('aria-pressed', String(active)); });
+  setOrderFilter(button.dataset.orderFilter);
   renderCustomerOrders();
 }));
 document.querySelector('#customer-order-search').addEventListener('input', renderCustomerOrders);
@@ -595,6 +612,7 @@ document.querySelector('#orders-list').addEventListener('click', async (event) =
     const { error } = await supabase.rpc('customer_confirm_order_delivery', { p_order_id: received.dataset.confirmDelivery });
     if (error) { received.disabled = false; received.textContent = 'ORDER RECEIVED'; orderNotice.textContent = /schema cache|function.*not found/i.test(error.message || '') ? 'Delivery confirmation is not available yet. Please contact the shop.' : (error.message || 'Could not confirm delivery. Please try again.'); orderNotice.dataset.kind = 'error'; return; }
     orderNotice.textContent = 'Thank you. Your order is marked as delivered.'; orderNotice.dataset.kind = 'success';
+    setOrderFilter('completed');
     await loadOrders(); return;
   }
   const open = event.target.closest('[data-open-cancel]');
@@ -610,6 +628,8 @@ document.querySelector('#orders-list').addEventListener('submit', async (event) 
   const { error } = await supabase.rpc('customer_cancel_order', { p_order_id: cancelForm.dataset.cancelForm, p_reason: cancelForm.elements.reason.value });
   if (error) { button.disabled = false; button.textContent = 'Confirm cancellation'; orderNotice.textContent = error.message || 'Could not cancel this order. Please contact the shop.'; orderNotice.dataset.kind = 'error'; return; }
   orderNotice.textContent = 'Order cancelled. If you already paid, contact the shop about your payment.'; orderNotice.dataset.kind = 'success';
+  clearPlacedOrder(cancelForm.dataset.cancelForm);
+  setOrderFilter('cancelled');
   await loadOrders();
 });
 document.querySelector('#orders-list').addEventListener('change', (event) => {
@@ -641,11 +661,13 @@ document.querySelector('#orders-list').addEventListener('submit', async (event) 
     if (error) throw error;
     orderNotice.textContent = 'Payment proof submitted. Staff will verify it manually before the order is marked paid.';
     orderNotice.dataset.kind = 'success';
+    clearPlacedOrder(form.dataset.proofOrder);
+    setOrderFilter('in-progress');
     await loadOrders();
   } catch (error) {
     orderNotice.textContent = `${error.message || 'Upload failed.'} You can try again.`;
     orderNotice.dataset.kind = 'error';
-  } finally { button.disabled = false; button.textContent = 'UPLOAD'; }
+  } finally { button.disabled = false; button.textContent = 'SUBMIT PAYMENT PROOF'; }
 });
 document.querySelectorAll('#sign-out, #mobile-sign-out').forEach((button) => button.addEventListener('click', async () => {
   signingOut = true;

@@ -189,6 +189,12 @@
 .proof-upload small { line-height:1.5; }
 .proof-upload .proof-file-status { margin:0; color:#c1d6cc; font-size:12px; overflow-wrap:anywhere; }
 .proof-upload .admin-action { justify-self:start; min-height:42px; }
+.payment-action { margin-top:14px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface-deep); }
+.payment-action summary { min-height:44px; padding:11px 14px; color:var(--ui-primary); cursor:pointer; font-weight:700; }
+.payment-action summary:focus-visible { outline:2px solid var(--ui-primary); outline-offset:2px; }
+.payment-action > .payment-placeholder, .payment-action > p { margin:12px 14px; }
+.payment-action .proof-upload { margin:0; border:0; }
+.proof-waiting { padding:12px 14px; color:var(--ui-text-muted); line-height:1.5; }
 /* Payment/order cards must use their full available width in the account pane. */
 #orders-list { container-type:inline-size; }
 #orders-list .order-row { display:block; width:100%; min-width:0; box-sizing:border-box; }
@@ -262,7 +268,7 @@
 .profile-exit:hover { color:#fff; border-color:#ffb4b4; background:rgba(248,113,113,.22); }
 .account-content, .order-history, .addresses-view, .account-shell { min-width:0; }
 @media (max-width:700px) {
-  .account-sections { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding-bottom:12px; }
+  .account-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding-bottom:12px; }
   .account-sections a, .account-sections a:hover, .account-nav-signout { min-width:0; width:100%; min-height:42px; margin:0; padding:8px 3px; line-height:1.25; overflow-wrap:normal; }
   .account-sections a { display:flex; align-items:center; justify-content:center; text-align:center; }
   .account-nav-signout { display:none; }
