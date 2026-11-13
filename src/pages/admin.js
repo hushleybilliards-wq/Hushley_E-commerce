@@ -1,5 +1,6 @@
 import { notifyActivity } from '../lib/activity-island.js';
 import { createStaffVerificationClient, isSupabaseConfigured, supabase } from '../lib/supabase.js';
+import { checkStaffAccess } from '../lib/staff-access.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const gate = $('#admin-gate');
@@ -84,6 +85,33 @@ function rowMessage(host, columns, message, retry = '') {
   host.innerHTML = `<tr><td colspan="${columns}" class="table-message">${escapeHtml(message)}${retry ? ` <button class="text-action" data-retry="${retry}">RETRY</button>` : ''}</td></tr>`;
 }
 
+async function handleStaffDenial(result) {
+  if (result === 'active') return false;
+  if (result === 'unavailable') {
+    gateMessage.textContent = 'Could not check staff access. Check your connection or sign in with another account.';
+    return true;
+  }
+  authorized = false; layout.hidden = true; gate.hidden = false;
+  if (result === 'disabled') location.replace('/account?next=/admin&staff=disabled');
+  else gateMessage.textContent = 'This staff account is disabled. Select Sign in to switch accounts.';
+  return true;
+}
+
+$('#admin-gate-sign-in').addEventListener('click', async (event) => {
+  if (!supabase) return;
+  event.preventDefault();
+  const link = event.currentTarget; if (link.getAttribute('aria-disabled') === 'true') return;
+  link.setAttribute('aria-disabled', 'true');
+  try {
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) throw error;
+    location.assign(link.href);
+  } catch {
+    gateMessage.textContent = 'Could not sign out on this device. Check your connection and try again.';
+    link.removeAttribute('aria-disabled');
+  }
+});
+
 if (!isSupabaseConfigured) {
   gateMessage.textContent = 'The client project is not connected. Add the Supabase URL and publishable key to .env.';
   $('#admin-config').hidden = false;
@@ -93,10 +121,8 @@ if (!isSupabaseConfigured) {
   else if (!['admin', 'staff'].includes(user.app_metadata?.role)) gateMessage.textContent = 'Permission denied. This account has no administrator role. Ask the project owner to assign it, then sign in again.';
   else {
     isStaff = user.app_metadata?.role === 'staff';
-    const staffAccess = isStaff ? await supabase.rpc('staff_current_access') : null;
-    if (isStaff && (staffAccess.error || !staffAccess.data)) {
-      gateMessage.textContent = 'Staff access is unavailable or disabled. Contact the shop owner.';
-    } else {
+    const staffAccess = isStaff ? await checkStaffAccess(supabase) : 'active';
+    if (!await handleStaffDenial(staffAccess)) {
     authorized = true;
     document.body.classList.toggle('staff-session', isStaff);
     notificationUserId = user.id;
@@ -979,8 +1005,9 @@ async function refreshAdminInBackground() {
   try {
     await refreshNotifications();
     if (isStaff) {
-      const { data, error } = await supabase.rpc('staff_current_access');
-      if (error || !data) { authorized = false; layout.hidden = true; gate.hidden = false; gateMessage.textContent = 'Staff access is unavailable or disabled. Contact the shop owner.'; return; }
+      const access = await checkStaffAccess(supabase);
+      if (access === 'unavailable') { backgroundFailure('dashboard'); return; }
+      if (await handleStaffDenial(access)) return;
     }
     if (!isStaff && currentAdminView === 'staff') await loadStaffSection();
     if (!adminIsEditing()) await Promise.all([loadOrders({ background: true }), loadMetrics({ background: true }), loadProducts({ background: true }), ...(isStaff ? [] : [loadProfiles({ background: true })])]);

@@ -880,6 +880,9 @@ if (isSupabaseConfigured) {
   window.addEventListener('beforeunload', () => subscription.unsubscribe(), { once: true });
 }
 updateMode();
+if (new URLSearchParams(location.search).get('staff') === 'disabled') {
+  say('This staff account is disabled. Contact the shop owner, or sign in with another account.', 'error');
+}
 
 async function refreshCustomerOrdersInBackground() {
   if (!currentUser || customerBackgroundBusy || customerForegroundBusy || document.hidden || !navigator.onLine || customerOrderEditing()) return;
