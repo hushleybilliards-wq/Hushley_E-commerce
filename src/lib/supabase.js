@@ -9,3 +9,11 @@ export const supabase = isSupabaseConfigured
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     })
   : null;
+
+// OTP verification must not replace or sign out the owner's browser session.
+export function createStaffVerificationClient() {
+  if (!isSupabaseConfigured) return null;
+  return createClient(url, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'hushley-staff-verification' },
+  });
+}

@@ -1,0 +1,79 @@
+// Offline staff authorization regression test; never reads production credentials.
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const require = createRequire(process.env.HUSHLEY_TEST_DEPENDENCIES ? resolve(process.env.HUSHLEY_TEST_DEPENDENCIES, 'package.json') : import.meta.url);
+const { PGlite } = require('@electric-sql/pglite');
+const { pgcrypto } = require('@electric-sql/pglite/contrib/pgcrypto');
+const db = new PGlite({ extensions: { pgcrypto } });
+const staff = '10000000-0000-0000-0000-000000000001';
+const owner = '10000000-0000-0000-0000-000000000002';
+const customer = '10000000-0000-0000-0000-000000000003';
+const q = (sql, params = []) => db.query(sql, params);
+async function as(id, role = 'customer') {
+  await db.exec('reset role');
+  await q("select set_config('request.jwt.claims',$1,false)", [JSON.stringify({ sub: id, app_metadata: { role } })]);
+  await db.exec('set role authenticated');
+}
+try {
+  await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth; create schema storage; create schema extensions;
+    create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz default now(), raw_user_meta_data jsonb default '{}', raw_app_meta_data jsonb default '{}');
+    create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+    create function auth.uid() returns uuid language sql stable as $$select (auth.jwt()->>'sub')::uuid$$;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+    alter table storage.objects enable row level security;
+    create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;
+    grant usage on schema public,auth,storage to anon,authenticated;
+    grant select,insert,update,delete on storage.objects to anon,authenticated;`);
+  for (const file of ['20261108031340_hushley_commerce_auth.sql','20261109105526_hushley_shipping_options_payment_guards.sql','20261111165241_product_payment_separate_shipping.sql','20261111173322_admin_order_guard_and_date_reference.sql','20261111173648_admin_order_guard_live_role.sql','20261112074024_hushley_gcash_payment_details.sql','20261113164358_staff_access_and_audit.sql','20261113172701_verify_staff_email.sql']) {
+    await db.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+  }
+  await q(`insert into auth.users(id,email,raw_app_meta_data) values ($1,'staff@gmail.com','{"role":"staff"}'),($2,'owner@gmail.com','{"role":"admin"}'),($3,'customer@gmail.com','{}')`, [staff, owner, customer]);
+  await q("insert into private.staff_accounts(user_id,display_name,email) values ($1,'Alex','staff@gmail.com')", [staff]);
+  await q('update auth.users set email_confirmed_at=null where id=$1', [staff]);
+  await as(staff,'staff');
+  assert.equal((await q('select public.staff_current_access() as active')).rows[0].active, false);
+  await assert.rejects(q("insert into public.products(category_id,slug,name,price,is_active) values ('cues','unverified','No access',100,true)"), /row-level security/);
+  await db.exec('reset role');
+  await q('update auth.users set email_confirmed_at=now() where id=$1', [staff]);
+  await as(staff,'staff');
+  assert.equal((await q('select public.staff_current_access() as active')).rows[0].active, true);
+  assert.equal((await q('select * from public.gcash_payment_details')).rows.length, 0);
+  assert.equal((await q("update public.gcash_payment_details set account_name='Changed' where id=true returning id")).rows.length, 0);
+  await assert.rejects(q('select * from public.owner_staff_accounts()'), /Owner access required/);
+  await assert.rejects(q('select * from public.owner_staff_activity()'), /Owner access required/);
+  await assert.rejects(q('select public.owner_set_staff_active($1,false)', [staff]), /Owner access required/);
+  await assert.rejects(q("select public.register_staff_account($1,'X','staff@gmail.com')", [staff]), /permission denied/);
+  await q("insert into public.products(category_id,slug,name,price,is_active) values ('cues','staff-test','Staff test',100,true)");
+  assert.equal((await q("delete from public.products where slug='staff-test' returning id")).rows.length, 0);
+  await assert.rejects(q("update public.products set reserved_quantity=1 where slug='staff-test'"), /Reserved stock/);
+  await db.exec('reset role');
+  await q("select set_config('request.jwt.claims','{}',false)");
+  const productId = (await q("update public.products set stock_quantity=5,reserved_quantity=1 where slug='staff-test' returning id")).rows[0].id;
+  const orderId = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,payment_method,status,subtotal,total,payment_scope) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','gcash','payment_verification',100,100,'products_only') returning id", [customer])).rows[0].id;
+  await q("insert into public.order_items(order_id,product_id,product_name,quantity,unit_price) values ($1,$2,'Staff test',1,100)", [orderId, productId]);
+  await q("insert into storage.objects(bucket_id,name) values ('payment-proofs','customer/proof.png')");
+  const paymentId = (await q("insert into public.payments(order_id,method,amount,proof_path,status) values ($1,'gcash',100,'customer/proof.png','pending') returning id", [orderId])).rows[0].id;
+  await as(staff,'staff');
+  await assert.rejects(q("update public.orders set total=1 where id=$1", [orderId]), /Staff may update order status only|Shipping and total/);
+  await assert.rejects(q("update public.payments set status='approved' where id=$1 returning id", [paymentId]), /permission denied/);
+  await q('select public.admin_review_payment($1,true)', [paymentId]);
+  assert.equal((await q('select status from public.orders where id=$1', [orderId])).rows[0].status, 'payment_confirmed');
+  assert.equal((await q('select stock_quantity from public.products where id=$1', [productId])).rows[0].stock_quantity, 4);
+  await q("update public.orders set status='shipped' where id=$1", [orderId]);
+  await as(owner,'admin');
+  const activities = (await q('select * from public.owner_staff_activity()')).rows;
+  assert.ok(activities.every((row) => row.actor_name === 'Alex'));
+  assert.ok(activities.some((row) => row.action === 'Payment approved'));
+  assert.ok(activities.some((row) => row.action === 'Order status updated'));
+  await q('select public.owner_set_staff_active($1,false)', [staff]);
+  await as(staff,'staff');
+  assert.equal((await q('select public.staff_current_access() as active')).rows[0].active, false);
+  assert.equal((await q("update public.products set name='Changed' where slug='staff-test' returning id")).rows.length, 0);
+  await as(customer);
+  assert.equal((await q('select * from public.gcash_payment_details')).rows.length, 1);
+  await assert.rejects(q('select * from public.owner_staff_activity()'), /Owner access required/);
+  console.log('PASS: staff access, owner-only audit, product deletion, reservation guard and revocation');
+} finally { await db.close(); }

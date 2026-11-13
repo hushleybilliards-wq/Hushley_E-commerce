@@ -171,7 +171,6 @@ body.admin-session .account-link{display:none!important}
   .product-image{aspect-ratio:1/1}
   .product-meta{padding-inline:4px;flex-wrap:wrap;font-size:9px;line-height:12px}
   .product-card h3{padding-inline:4px;font-size:15px;line-height:20px}
-  .product-description{height:40px;min-height:40px;padding-inline:4px;font-size:11px;line-height:15px}
   .product-specifications{margin-inline:4px}
   .product-specifications dt,.product-specifications dd{font-size:9px;line-height:12px}
   .product-options{margin-inline:4px;padding:5px}
@@ -179,8 +178,9 @@ body.admin-session .account-link{display:none!important}
   .product-option select{min-height:30px;font-size:11px}
   .product-buy{padding:0 4px 5px}
   .product-buy>strong{font-size:20px;line-height:26px}
-  .product-actions{grid-template-columns:1fr;gap:4px}
-  .add-button,.buy-now-button{min-height:32px;padding:5px;font-size:10px;line-height:14px}
+  .product-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .product-card .add-button,.product-card .buy-now-button{min-width:0;min-height:40px;padding:4px 2px;font-size:clamp(9px,2.6vw,11px);line-height:1.2;white-space:normal}
+  .product-card .add-button .material-symbols-outlined{display:none}
 }
 .shop-contact{max-width:1360px;margin:0 auto;padding:42px 24px 52px;border-top:1px solid var(--ui-border);scroll-margin-top:90px}
 .shop-contact-heading h2{margin:0;font:700 clamp(22px,3vw,30px) var(--font-display);color:var(--ui-text)}

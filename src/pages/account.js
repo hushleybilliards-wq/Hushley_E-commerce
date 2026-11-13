@@ -30,7 +30,7 @@ function authErrorMessage(error) {
   const detail = error?.message || 'We could not complete that request.';
   if (error?.status === 429 || /rate limit|too many requests/i.test(detail)) return 'Too many attempts in a short time. Please wait a little, then try again.';
   if (/invalid login credentials/i.test(detail)) return 'Email or password is incorrect. Check your details and try again.';
-  if (/email not confirmed/i.test(detail)) return 'Please confirm your email using the link we sent before signing in.';
+  if (/email not confirmed/i.test(detail)) return 'Verify your email before signing in. Staff should give their verification code to the shop administrator.';
   if (/already registered|already exists|database error saving new user/i.test(detail)) return 'We could not create this account. If you already have an account, sign in; otherwise contact the shop for help.';
   if (/invalid.*(otp|token)|token.*(expired|invalid)|otp.*(expired|invalid)/i.test(detail)) return 'That code is invalid or expired. Check the latest code and try again.';
   if (/password.*(weak|short|length)/i.test(detail)) return 'Choose a stronger password with at least 8 characters.';
@@ -41,7 +41,7 @@ function authErrorMessage(error) {
 function redirectAfterAuthentication(user) {
   const params = new URLSearchParams(location.search);
   const next = params.get('next');
-  if (user?.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
+  if (['admin', 'staff'].includes(user?.app_metadata?.role)) { location.replace('/admin'); return; }
   if (next === '/checkout') { location.replace('/checkout'); return; }
   location.replace('/');
 }
@@ -151,7 +151,7 @@ function updateMode() {
 }
 async function showAccount(user) {
   if (mode === 'recovery') return;
-  if (user.app_metadata?.role === 'admin') { location.replace('/admin'); return; }
+  if (['admin', 'staff'].includes(user.app_metadata?.role)) { location.replace('/admin'); return; }
   if (user.user_metadata?.signup_incomplete === true) {
     verifiedSignupUser = user;
     mode = 'signup'; signupStage = 2;
@@ -535,6 +535,39 @@ document.querySelector('#customer-profile-form')?.addEventListener('submit', asy
       : `${authErrorMessage(error)} You can try again.`;
     profileStatus.dataset.kind = 'error';
   } finally { button.disabled = false; button.textContent = 'SAVE PROFILE'; }
+});
+const deleteDialog = document.querySelector('#delete-account-dialog');
+const deleteForm = document.querySelector('#delete-account-form');
+const deleteStatus = document.querySelector('#delete-account-status');
+document.querySelector('#open-delete-account').addEventListener('click', () => {
+  deleteForm.reset(); deleteStatus.textContent = ''; deleteDialog.showModal();
+  deleteForm.elements.password.focus();
+});
+document.querySelector('#cancel-delete-account').addEventListener('click', () => deleteDialog.close());
+deleteDialog.addEventListener('close', () => { deleteForm.reset(); document.querySelector('#open-delete-account').focus(); });
+deleteDialog.addEventListener('cancel', (event) => { if (deleteForm.dataset.pending === 'true') event.preventDefault(); });
+deleteForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!deleteForm.reportValidity() || deleteForm.dataset.pending === 'true') return;
+  const confirmButton = document.querySelector('#confirm-delete-account');
+  const cancelButton = document.querySelector('#cancel-delete-account');
+  deleteForm.dataset.pending = 'true'; confirmButton.disabled = true; cancelButton.disabled = true;
+  deleteStatus.textContent = 'Checking your password and deleting your account…';
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-customer-account', { body: { password: deleteForm.elements.password.value } });
+    if (error) {
+      let message = 'Account deletion is unavailable. Please try again later.';
+      if (error.context instanceof Response) { try { const body = await error.context.json(); if (typeof body.error === 'string') message = body.error; } catch { /* Keep the generic message. */ } }
+      throw new Error(message);
+    }
+    if (!data?.success) throw new Error('Account deletion could not be confirmed. Please try again.');
+    deleteForm.elements.password.value = '';
+    try { sessionStorage.setItem('hushley-account-deleted', '1'); } catch { /* Account deletion has already succeeded. */ }
+    signingOut = true;
+    try { await supabase.auth.signOut({ scope: 'local' }); } finally { location.replace('/'); }
+  } catch (error) {
+    deleteStatus.textContent = error.message || 'Account deletion is unavailable. Please try again later.';
+  } finally { deleteForm.dataset.pending = 'false'; confirmButton.disabled = false; cancelButton.disabled = false; }
 });
 const proofTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const proofLimit = 10 * 1024 * 1024;

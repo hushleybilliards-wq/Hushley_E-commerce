@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { createClient } from '@supabase/supabase-js';
+
+const { ACCOUNT_TEST_URL: url, ACCOUNT_TEST_ANON: anon, ACCOUNT_TEST_SERVICE: service } = process.env;
+if (!url || !/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(url) || !anon || !service) throw new Error('This test requires local Supabase credentials.');
+const opts = { auth: { persistSession: false, autoRefreshToken: false } };
+const admin = createClient(url, service, opts);
+const customer = createClient(url, anon, opts);
+const email = `delete-test-${Date.now()}@gmail.com`;
+const password = 'Test!Secure5678';
+let userId, orderId, proofPath, adminUserId, otherUserId;
+const unwrap = (response) => { if (response.error) throw response.error; return response.data; };
+try {
+  const created = unwrap(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: 'Deletion test' } }));
+  userId = created.user.id;
+  unwrap(await customer.auth.signInWithPassword({ email, password }));
+  const oldToken = unwrap(await customer.auth.getSession()).session.access_token;
+  const order = unwrap(await admin.from('orders').insert({ customer_id:userId, customer_name:'Deletion test', email, mobile:'09170000000', address_line:'Test address', city:'Test city', province:'Test province', postal_code:'1000', country:'Philippines', courier:'j&t', payment_method:'gcash', subtotal:100, total:100 }).select('id').single());
+  orderId = order.id;
+  proofPath = `${userId}/${orderId}/proof.png`;
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR2YAAAAASUVORK5CYII=', 'base64');
+  unwrap(await customer.storage.from('payment-proofs').upload(proofPath, png, { contentType:'image/png' }));
+  unwrap(await customer.storage.from('payment-proofs').download(proofPath));
+  const otherEmail = `delete-other-${Date.now()}@gmail.com`;
+  const otherCustomer = createClient(url, anon, opts);
+  otherUserId = unwrap(await admin.auth.admin.createUser({ email:otherEmail, password, email_confirm:true })).user.id;
+  unwrap(await otherCustomer.auth.signInWithPassword({ email:otherEmail, password }));
+  assert.ok((await otherCustomer.storage.from('payment-proofs').download(proofPath)).error, 'Another customer must not read this proof');
+  unwrap(await admin.from('payments').insert({ order_id:orderId, method:'gcash', amount:100, proof_path:proofPath }));
+  const staffEmail = `delete-admin-${Date.now()}@gmail.com`;
+  const staffAuth = createClient(url, anon, opts);
+  const staff = unwrap(await admin.auth.admin.createUser({ email:staffEmail, password, email_confirm:true, app_metadata:{ role:'admin' } }));
+  adminUserId = staff.user.id;
+  unwrap(await staffAuth.auth.signInWithPassword({ email:staffEmail, password }));
+  const forbidden = await staffAuth.functions.invoke('delete-customer-account', { body:{ password } });
+  assert.ok(forbidden.error, 'An admin must not use customer deletion');
+  assert.ok(unwrap(await admin.auth.admin.getUserById(adminUserId)).user);
+  const unauth = await fetch(`${url}/functions/v1/delete-customer-account`, { method:'POST', headers:{ apikey:anon, 'Content-Type':'application/json' }, body:JSON.stringify({ password }) });
+  assert.equal(unauth.ok, false, 'An anonymous request must fail');
+  const wrong = await customer.functions.invoke('delete-customer-account', { body:{ password:'Incorrect!Password' } });
+  assert.ok(wrong.error, 'Incorrect password must fail');
+  assert.ok(unwrap(await admin.auth.admin.getUserById(userId)).user, 'Account must still exist after a failed password');
+  const deleted = await customer.functions.invoke('delete-customer-account', { body:{ password } });
+  if (deleted.error) { const details = deleted.error.context instanceof Response ? await deleted.error.context.text() : deleted.error.message; throw new Error(`Deletion failed: ${details}`); }
+  assert.equal(deleted.data?.success, true);
+  const retainedOrder = unwrap(await admin.from('orders').select('customer_id,email').eq('id',orderId).single());
+  assert.equal(retainedOrder.customer_id, null);
+  assert.equal(retainedOrder.email, email);
+  const retainedPayment = unwrap(await admin.from('payments').select('proof_path').eq('order_id',orderId).single());
+  assert.equal(retainedPayment.proof_path, proofPath);
+  unwrap(await staffAuth.storage.from('payment-proofs').download(proofPath));
+  const staleRead = await fetch(`${url}/storage/v1/object/authenticated/payment-proofs/${proofPath}`, { headers: { apikey:anon, Authorization:`Bearer ${oldToken}` } });
+  assert.equal(staleRead.ok, false, 'A deleted customer’s old access token must not read retained proofs');
+  const staleUpload = await fetch(`${url}/storage/v1/object/payment-proofs/${userId}/${orderId}/after-deletion.png`, { method:'POST', headers:{ apikey:anon, Authorization:`Bearer ${oldToken}`, 'Content-Type':'image/png' }, body:png });
+  assert.equal(staleUpload.ok, false, 'A deleted customer’s old access token must not upload proofs');
+  console.log('Local deletion checks passed: password, authorization, retained records and proof, and stale-token protection.');
+} finally {
+  if (proofPath) await admin.storage.from('payment-proofs').remove([proofPath]);
+  if (orderId) await admin.from('orders').delete().eq('id',orderId);
+  if (userId) await admin.auth.admin.deleteUser(userId);
+  if (adminUserId) await admin.auth.admin.deleteUser(adminUserId);
+  if (otherUserId) await admin.auth.admin.deleteUser(otherUserId);
+}

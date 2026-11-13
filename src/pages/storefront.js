@@ -118,7 +118,7 @@ function renderProducts() {
     <article class="product-card" data-product-card="${escapeHtml(item.id)}">
       <div class="product-image"><span class="product-tag">${escapeHtml(item.tag)}</span><div class="product-visual"><img class="product-photo" src="${escapeHtml(item.image_urls[0])}" alt="${escapeHtml(item.name)}" loading="lazy"></div><button class="save-button ${saved.has(item.id) ? 'is-saved' : ''}" data-save="${escapeHtml(item.id)}" aria-label="${saved.has(item.id) ? 'Remove' : 'Save'} ${escapeHtml(item.name)}" aria-pressed="${saved.has(item.id)}"><span class="material-symbols-outlined" aria-hidden="true">${saved.has(item.id) ? 'favorite' : 'favorite_border'}</span></button></div>
       <div class="product-meta"><span class="product-category-label">${escapeHtml(item.category)}</span><span class="stock-dot">${item.available_count > 0 ? `${item.available_count} IN STOCK` : 'SOLD OUT'}</span></div>
-      <h3>${escapeHtml(item.name)}</h3><p class="product-description">${escapeHtml(item.description)}</p>
+      <h3>${escapeHtml(item.name)}</h3>
       ${renderSpecifications(item.specifications)}
       ${getProductOptions(item).length ? `<div class="product-options"><p class="option-heading">SELECT YOUR OPTIONS</p>${getProductOptions(item).map((option, index) => {
         const name = option.name.trim();
@@ -325,6 +325,12 @@ document.querySelectorAll('.filter').forEach((button) => button.addEventListener
 }));
 document.querySelector('#catalog-search').addEventListener('input', (event) => { searchTerm = event.target.value.trim().toLowerCase(); renderProducts(); });
 document.querySelector('.bag-button').addEventListener('click', openDrawer);
+const cartShortcutUrl = new URL(window.location.href);
+if (cartShortcutUrl.searchParams.get('cart') === '1') {
+  cartShortcutUrl.searchParams.delete('cart');
+  history.replaceState(history.state, '', `${cartShortcutUrl.pathname}${cartShortcutUrl.search}${cartShortcutUrl.hash}`);
+  openDrawer();
+}
 document.querySelector('.close-drawer').addEventListener('click', closeDrawer);
 document.querySelector('.continue-shopping').addEventListener('click', closeDrawer);
 overlay.addEventListener('click', closeDrawer);
@@ -355,12 +361,13 @@ window.addEventListener('offline', () => setStatus('offline', '<span class="mate
 window.addEventListener('online', () => { setStatus('reconnected', '<span class="material-symbols-outlined" aria-hidden="true">wifi</span><span>Connection restored.</span>'); setTimeout(() => { if (navigator.onLine) { setStatus('', ''); if (isSupabaseConfigured) { if (catalogSnapshot) refreshCatalogInBackground(); else loadCatalog(); } } }, 2200); });
 document.querySelector('#year').textContent = new Date().getFullYear();
 if (isSupabaseConfigured) {
-  const syncAdminLink = (user) => { isAdminSession = user?.app_metadata?.role === 'admin'; adminDashboardLink.hidden = !isAdminSession; document.body.classList.toggle('admin-session', isAdminSession); };
+  const syncAdminLink = (user) => { isAdminSession = ['admin', 'staff'].includes(user?.app_metadata?.role); adminDashboardLink.hidden = !isAdminSession; document.body.classList.toggle('admin-session', isAdminSession); };
   supabase.auth.getUser().then(({ data }) => syncAdminLink(data.user));
   const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => syncAdminLink(session?.user));
   window.addEventListener('beforeunload', () => subscription.unsubscribe(), { once: true });
 }
 renderProducts(); updateCart();
+if (sessionStorage.getItem('hushley-account-deleted') === '1') { sessionStorage.removeItem('hushley-account-deleted'); showToast('Your account has been deleted.'); }
 loadCatalog();
 
 async function refreshCatalogInBackground() {

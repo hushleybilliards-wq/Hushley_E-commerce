@@ -1,5 +1,7 @@
 # Hushley Billiard Accessories Shop
 
+For step-by-step customer and administrator instructions, see [the user guide](USER_GUIDE.md).
+
 Responsive storefront with Supabase customer authentication, account/order pages, checkout, and a role-gated admin dashboard. The black and white storefront structure follows the DC Pro reference; type scale and spacing use a clearer sans-serif hierarchy inspired by Nike PH.
 
 ## Local setup
@@ -81,3 +83,12 @@ The production database has the three migrations described in [supabase/SCHEMA_R
 ## GCash receiving details
 
 The `hushley_gcash_payment_details` migration adds an admin-managed GCash receiving name and number. After applying it to the intended Supabase project and deploying the updated frontend, an administrator can enter these in **Payment Verification → GCash payment details**. Signed-in customers with an eligible GCash order see the details beside the payment-proof upload under **Account → My payment**. Until both details are saved, customers are directed to contact the shop. Only enter receiving details, never a PIN, password, or OTP. Other payment methods still require the customer to contact the shop for details. Staff continue to verify payment manually.
+## Staff account rollout
+
+The staff-access and email-verification migrations and updated `create-staff` Edge Function were deployed to the linked production Supabase project on 14 November 2026. The matching frontend still needs deployment, and the email delivery and complete flow need authenticated end-to-end testing. The owner supplies a staff name, Gmail address, and initial password and shares the password privately. A confirmation code is sent to the staff email; the staff member shares it with the owner, who enters it in Staff & Activity. An isolated temporary client preserves the owner's session. Staff access is denied until the email is verified. The app does not force a password change. Staff can use email password recovery to change it. The earlier unrelated `protect_deleted_customer_proofs` migration remains pending and requires an explicit out-of-order migration review.
+
+The owner-only Staff & Activity view lists accounts and groups changes by Manila date. A disabled staff account loses database permissions immediately. Staff can see individual order and payment amounts needed for work; those values can be aggregated independently, even though the staff dashboard hides sales summaries and exports. The feature has local regression coverage, but still needs authenticated end-to-end testing with separate owner, staff, disabled staff, and customer accounts. See `supabase/STAFF_ACCESS_DESIGN.md`.
+
+## Customer account deletion
+
+The local account page and `delete-customer-account` Edge Function require a customer to confirm their password on the server before deleting their Auth account. The profile is removed; orders and payment records, their customer contact snapshots, and payment proof files remain available to staff. Existing orders are not automatically cancelled. The local test covers incorrect passwords, administrator rejection, retained records and proof access, and proof access with a deleted user's old token. The function uses Supabase-provided server credentials. The reviewed `protect_deleted_customer_proofs` migration requires an existing profile for customer proof access, while preserving staff access. Neither the migration nor function has been deployed to the hosted project; apply the migration before deploying the function and matching frontend. Deletion revokes refresh sessions, but already issued access tokens may remain valid until expiry for other API operations; see [Supabase user deletion guidance](https://supabase.com/docs/guides/auth/managing-user-data#deleting-users).

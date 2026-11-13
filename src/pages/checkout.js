@@ -256,7 +256,7 @@ if (!items.length) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   if (!user) { showGate('Sign in to place your order.'); document.querySelector('#signin-link').hidden = false; }
-  else if (user.app_metadata?.role === 'admin') {
+  else if (['admin', 'staff'].includes(user.app_metadata?.role)) {
     showGate('Administrator accounts cannot place orders. Sign in with a customer account to shop.');
     document.querySelector('#signin-link').hidden = true;
   } else {

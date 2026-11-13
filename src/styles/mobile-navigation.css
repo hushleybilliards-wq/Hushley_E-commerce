@@ -1,0 +1,18 @@
+.mobile-bottom-nav{display:none}
+@media(max-width:720px){
+  body:has(.mobile-bottom-nav){padding-bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  .mobile-bottom-nav{position:fixed;z-index:9;left:0;right:0;bottom:0;display:flex;align-items:stretch;justify-content:space-around;min-height:62px;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--ui-border-strong);background:rgba(13,14,19,.97);box-shadow:0 -8px 25px #0005;backdrop-filter:blur(16px)}
+  .mobile-bottom-nav>a,.mobile-bottom-nav summary{min-width:0;min-height:52px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:3px 4px;color:var(--ui-text-muted);text-decoration:none;border-radius:8px;cursor:pointer;list-style:none}
+  .mobile-bottom-nav a>span:not(.material-symbols-outlined),.mobile-bottom-nav summary>span:not(.material-symbols-outlined){font:600 10px/1.2 'Plus Jakarta Sans',sans-serif!important;letter-spacing:0!important}
+  .mobile-bottom-nav .material-symbols-outlined{font-size:23px!important;line-height:1}
+  .mobile-bottom-nav a[aria-current=page],.mobile-bottom-nav summary.is-active{color:var(--ui-primary);background:rgba(78,222,163,.09)}
+  .mobile-bottom-nav a:focus-visible,.mobile-bottom-nav summary:focus-visible{outline:2px solid var(--ui-primary);outline-offset:-2px}
+  .mobile-more{flex:1;min-width:0;display:flex}.mobile-more summary{width:100%}.mobile-more summary::-webkit-details-marker{display:none}
+  .mobile-more-menu{position:absolute;right:8px;bottom:calc(100% + 8px);min-width:180px;padding:6px;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ui-surface-raised);box-shadow:0 8px 25px #0009}
+  .mobile-more-menu a{display:flex;align-items:center;gap:10px;padding:10px;color:var(--ui-text);text-decoration:none;border-radius:5px}.mobile-more-menu a[aria-current=page]{color:var(--ui-primary)}
+  .mobile-more-menu a>span:not(.material-symbols-outlined){font-size:13px!important}.mobile-more-menu .material-symbols-outlined{font-size:20px!important}
+  .admin-page .admin-sidebar nav{display:none}.admin-page .admin-sidebar{position:relative}.admin-page .admin-status{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  .checkout-submit-bar{bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  body.drawer-open .mobile-bottom-nav{visibility:hidden}
+}

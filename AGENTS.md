@@ -42,6 +42,8 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 
 ## Confirmed customer account verification
 
+- Customers may delete their own account after confirming their password. Keep the shop's order and payment records, including payment proofs, after account deletion. Implement this with server-side authorization and preserve staff access to retained proofs.
+
 - New signups must use an `@gmail.com` address without a `+` sign; numbers in customer names are allowed. Existing users retain their sign-in and recovery methods. The form implements this rule; the reviewed Before User Created hook migration has been deployed, but must still be enabled in Supabase for server-side enforcement. The hook blocks new phone-only identities while active.
 - Blocking plus aliases is not bot protection. Keep server-side Auth rate limits and email confirmation in force; CAPTCHA needs a configured provider and client integration before activation.
 - Philippine customer contact numbers are unique across profiles, including equivalent +63 and 09 formats. The number is not SMS-verified; signup can claim it before email confirmation, so a number may require staff assistance if claimed incorrectly. Existing unconfirmed email signup behavior remains governed by Supabase Auth.

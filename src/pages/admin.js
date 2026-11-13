@@ -1,5 +1,5 @@
 import { notifyActivity } from '../lib/activity-island.js';
-import { isSupabaseConfigured, supabase } from '../lib/supabase.js';
+import { createStaffVerificationClient, isSupabaseConfigured, supabase } from '../lib/supabase.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const gate = $('#admin-gate');
@@ -20,6 +20,7 @@ let selectedOrderId = null;
 let overviewPreviewVersion = 0;
 let currentAdminView = 'overview';
 let authorized = false;
+let isStaff = false;
 let notificationUserId = null;
 let notificationEvents = [];
 let notificationRefreshing = false;
@@ -89,9 +90,15 @@ if (!isSupabaseConfigured) {
 } else {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) gateMessage.textContent = 'Your session may have expired. Sign in again with your administrator account.';
-  else if (user.app_metadata?.role !== 'admin') gateMessage.textContent = 'Permission denied. This account has no administrator role. Ask the project owner to assign it, then sign in again.';
+  else if (!['admin', 'staff'].includes(user.app_metadata?.role)) gateMessage.textContent = 'Permission denied. This account has no administrator role. Ask the project owner to assign it, then sign in again.';
   else {
+    isStaff = user.app_metadata?.role === 'staff';
+    const staffAccess = isStaff ? await supabase.rpc('staff_current_access') : null;
+    if (isStaff && (staffAccess.error || !staffAccess.data)) {
+      gateMessage.textContent = 'Staff access is unavailable or disabled. Contact the shop owner.';
+    } else {
     authorized = true;
+    document.body.classList.toggle('staff-session', isStaff);
     notificationUserId = user.id;
     gate.hidden = true;
     layout.hidden = false;
@@ -99,7 +106,8 @@ if (!isSupabaseConfigured) {
     $('#today-date').textContent = new Date().toLocaleDateString('en-PH', { dateStyle: 'long' });
     setConnection(navigator.onLine);
     await loadCategories();
-    await Promise.all([loadMetrics(), loadOrders(), loadProducts(), loadInventory(), loadProfiles()]);
+    await Promise.all([loadMetrics(), loadOrders(), loadProducts(), loadInventory(), ...(isStaff ? [] : [loadProfiles()])]);
+    }
   }
 }
 
@@ -152,6 +160,19 @@ function backgroundFailure(key) {
 }
 async function loadMetrics(options = {}) {
   const started = Date.now();
+  if (isStaff) {
+    const [orders, payments, stock] = await Promise.all([
+      supabase.from('orders').select('id', { count: 'exact', head: true }).not('status', 'in', '(delivered,cancelled)'),
+      supabase.from('payments').select('id,orders!inner(status)', { count: 'exact', head: true }).eq('status', 'pending').eq('orders.status', 'payment_verification'),
+      fetchAll(() => supabase.from('products').select('id,stock_quantity,reserved_quantity,low_stock_threshold').eq('is_active', true).order('id')),
+    ]);
+    const error = orders.error || payments.error || stock.error;
+    if (error) { if (options.background) backgroundFailure('metrics'); else say(failureMessage(error, 'Dashboard'), 'error'); return; }
+    $('#metric-orders').textContent = orders.count ?? '0';
+    $('#metric-payments').textContent = payments.count ?? '0';
+    $('#metric-low-stock').textContent = stock.data.filter((row) => row.stock_quantity - row.reserved_quantity <= row.low_stock_threshold).length;
+    return;
+  }
   const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(weekStart.getDate() - 6);
   const queries = await Promise.all([
     supabase.from('orders').select('id', { count: 'exact', head: true }).not('status', 'in', '(delivered,cancelled)'),
@@ -243,7 +264,7 @@ function renderAttention() {
   if (ordersLoaded && productsLoaded && !pending.length && !low.length) { host.innerHTML = '<p class="attention-empty"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span> Nothing needs attention.</p>'; return; }
   const reviews = ordersLoaded ? (pending.length ? `<ul>${pending.slice(0, 3).map(({ order }) => `<li><button type="button" data-select-order="${escapeHtml(order.id)}"><span><strong>${escapeHtml(order.order_number)}</strong><small>${escapeHtml(order.customer_name)} · Proof submitted</small></span><span aria-hidden="true">→</span></button></li>`).join('')}</ul>${pending.length > 3 ? '<button type="button" class="attention-more" data-attention-view="payments">View all payment reviews</button>' : ''}` : '<p class="attention-quiet">No payment proofs waiting for review.</p>') : `<p class="attention-quiet">${ordersLoadFailed ? 'Payment reviews unavailable. <button data-retry="orders">Retry</button>' : 'Loading payment reviews…'}</p>`;
   const stock = productsLoaded ? (low.length ? `<ul>${low.slice(0, 3).map((product) => `<li><button type="button" data-attention-product="${escapeHtml(product.id)}"><span><strong>${escapeHtml(product.name)}</strong><small>${product.stock_quantity - product.reserved_quantity} available</small></span><span aria-hidden="true">→</span></button></li>`).join('')}</ul>${low.length > 3 ? '<button type="button" class="attention-more" data-attention-view="products">View inventory &amp; catalog</button>' : ''}` : '<p class="attention-quiet">No low-stock products.</p>') : `<p class="attention-quiet">${productsLoadFailed ? 'Stock information unavailable. <button data-retry="products">Retry</button>' : 'Loading stock…'}</p>`;
-  host.innerHTML = `<section class="attention-group"><h3>Payment review <span>${ordersLoaded ? pending.length : '—'}</span></h3>${reviews}</section><section class="attention-group"><h3>Low stock <span>${productsLoaded ? low.length : '—'}</span></h3>${stock}</section>`;
+  host.innerHTML = `<section class="attention-group attention-payments"><h3><span class="attention-label"><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Payment review</span><span class="attention-count">${ordersLoaded ? pending.length : '—'}</span></h3>${reviews}</section><section class="attention-group attention-stock"><h3><span class="attention-label"><span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>Low stock</span><span class="attention-count">${productsLoaded ? low.length : '—'}</span></h3>${stock}</section>`;
 }
 
 function renderDashboardPanels() {
@@ -254,8 +275,10 @@ function renderDashboardPanels() {
   const overviewRows = filteredOrders.map((order) => ({ order, payment: [...(order.payments || [])].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] })).filter(({ order, payment }) => currentAdminView !== 'payments' || (order.status === 'payment_verification' && payment?.status === 'pending' && payment.proof_path));
   queue.innerHTML = overviewRows.length ? overviewRows.map(({ order, payment }) => {
     const items = (order.order_items || []).map((item) => `${escapeHtml(item.product_name)} × ${item.quantity}`).join(', ');
+    const orderKind = ({ pending_payment: 'pending', payment_verification: 'pending', payment_rejected: 'rejected', payment_confirmed: 'preparing', processing: 'preparing', ready_to_ship: 'preparing', shipped: 'shipped', in_transit: 'shipped', delivered: 'approved', cancelled: 'rejected' })[order.status] || 'unknown';
+    const proofKind = !payment?.proof_path ? 'missing' : ({ pending: 'pending', approved: 'approved', rejected: 'rejected' })[payment.status] || 'unknown';
     const proofStatus = payment?.proof_path ? (payment.status === 'pending' ? 'Proof awaiting review' : `Proof ${escapeHtml(payment.status)}`) : 'No proof submitted';
-    return `<article class="payment-queue-card overview-order-row"><div class="overview-order-summary"><strong>${escapeHtml(order.order_number)}</strong><span>${escapeHtml(order.customer_name)} · ${escapeHtml(orderStatusLabel(order.status))}</span><span>${items || 'No items recorded'}</span><small class="overview-proof-state ${payment?.proof_path ? 'has-proof' : ''}">${proofStatus}</small></div><strong class="overview-order-amount">${currency(payment?.amount ?? order.total)}</strong><button type="button" class="overview-view-button" data-select-order="${escapeHtml(order.id)}" aria-label="View order ${escapeHtml(order.order_number)}">VIEW</button></article>`;
+    return `<article class="payment-queue-card overview-order-row"><div class="overview-order-summary"><strong>${escapeHtml(order.order_number)}</strong><span>${escapeHtml(order.customer_name)}</span><span>${items || 'No items recorded'}</span><div class="overview-statuses"><small class="overview-status status-${orderKind}">${escapeHtml(orderStatusLabel(order.status))}</small><small class="overview-status status-${proofKind}">${proofStatus}</small></div></div><strong class="overview-order-amount">${currency(payment?.amount ?? order.total)}</strong><button type="button" class="overview-view-button" data-select-order="${escapeHtml(order.id)}" aria-label="View order ${escapeHtml(order.order_number)}">VIEW</button></article>`;
   }).join('') : `<p class="panel-message">${query ? 'No orders match your search.' : currentAdminView === 'payments' ? 'No payment proofs are waiting for review.' : 'No orders have been placed yet.'}</p>`;
   const recent = filteredOrders.slice(0, 6);
   fulfillment.innerHTML = recent.length ? recent.map((order) => {
@@ -716,6 +739,104 @@ gcashForm.addEventListener('submit', async (event) => {
   message.textContent = error || !data ? 'Could not save GCash details. Check your access and try again.' : 'GCash details saved. Check them carefully before customers pay.';
 });
 const adminTabs = [...document.querySelectorAll('.admin-sidebar nav a[href^="#"]')];
+let staffActivityRows = [];
+let staffAccountRows = null;
+function renderStaffActivity() {
+  const host = $('#staff-activity');
+  const name = $('#staff-activity-filter').value.trim().toLowerCase();
+  const date = $('#staff-activity-date').value;
+  const type = $('#staff-activity-type').value;
+  const dayOf = (row) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(row.created_at));
+  const rows = staffActivityRows.filter((row) => (!name || `${row.actor_name} ${row.action} ${row.subject}`.toLowerCase().includes(name)) && (!date || dayOf(row) === date) && (!type || row.action.startsWith(type)));
+  const groups = new Map();
+  for (const row of rows) {
+    const day = dayOf(row);
+    if (!groups.has(day)) groups.set(day, []);
+    groups.get(day).push(row);
+  }
+  host.innerHTML = groups.size ? [...groups].map(([day, entries], index) => `<details class="staff-day" ${index === 0 ? 'open' : ''}><summary>${escapeHtml(day)} <small>${entries.length} activities</small></summary><ol>${entries.map((row) => `<li><time>${escapeHtml(new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }).format(new Date(row.created_at)))}</time><div><strong>${escapeHtml(row.actor_name)}</strong> ${escapeHtml(row.action)}<small>${escapeHtml(row.subject)}${row.detail ? ` · ${escapeHtml(row.detail)}` : ''}</small></div></li>`).join('')}</ol></details>`).join('') : '<p>No matching staff activity.</p>';
+}
+async function loadStaffSection(options = {}) {
+  if (!authorized || isStaff) return;
+  const [accounts, activity] = await Promise.all([supabase.rpc('owner_staff_accounts'), fetchAll(() => supabase.rpc('owner_staff_activity').order('created_at', { ascending: false }).order('id', { ascending: false }))]);
+  const list = $('#staff-list');
+  if (accounts.error) { staffAccountRows = null; list.innerHTML = '<p>Staff accounts are unavailable. Check the database setup.</p>'; }
+  else if (options.force || (!list.contains(document.activeElement) && JSON.stringify(staffAccountRows) !== JSON.stringify(accounts.data))) {
+    staffAccountRows = accounts.data;
+    list.innerHTML = accounts.data.length ? accounts.data.map((row) => `<div class="staff-account-row"><div class="staff-account-details"><strong>${escapeHtml(row.display_name)}</strong><small>${escapeHtml(row.email)} · ${!row.active ? 'Disabled' : row.email_verified ? 'Active' : 'Email verification pending'}</small>${row.active && !row.email_verified ? `<form class="staff-code-form" data-staff-email="${escapeHtml(row.email)}"><label>Code sent to staff email <input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" required /></label><button type="submit" class="admin-action">Verify email</button><button type="button" class="admin-action" data-resend-staff-code>Resend code</button><span class="staff-code-status" role="status" aria-live="polite"></span></form>` : ''}</div><button type="button" class="admin-action" data-staff-id="${escapeHtml(row.user_id)}" data-staff-active="${row.active ? 'false' : 'true'}">${row.active ? 'Disable' : 'Enable'}</button></div>`).join('') : '<p>No staff accounts yet.</p>';
+  }
+  if (activity.error) { delete $('#staff-activity').dataset.loaded; $('#staff-activity').innerHTML = '<p>Activity is unavailable. Check the database setup.</p>'; }
+  else if (JSON.stringify(staffActivityRows) !== JSON.stringify(activity.data) || !$('#staff-activity').dataset.loaded) {
+    staffActivityRows = activity.data; $('#staff-activity').dataset.loaded = 'true'; renderStaffActivity();
+  }
+}
+$('#open-staff-form').addEventListener('click', () => { $('#staff-form').hidden = false; $('#staff-form input').focus(); });
+$('#refresh-staff').addEventListener('click', loadStaffSection);
+function hideStaffPassword() {
+  $('#staff-password').type = 'password';
+  const toggle = $('#toggle-staff-password');
+  toggle.setAttribute('aria-label', 'Show password'); toggle.setAttribute('aria-pressed', 'false');
+  $('.material-symbols-outlined', toggle).textContent = 'visibility';
+}
+$('#toggle-staff-password').addEventListener('click', (event) => {
+  const button = event.currentTarget; const input = $('#staff-password');
+  const visible = input.type === 'password'; input.type = visible ? 'text' : 'password';
+  button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+  button.setAttribute('aria-pressed', String(visible));
+  $('.material-symbols-outlined', button).textContent = visible ? 'visibility_off' : 'visibility';
+});
+$('#cancel-staff-form').addEventListener('click', () => { $('#staff-form').reset(); hideStaffPassword(); $('#staff-form').hidden = true; });
+$('#staff-activity-filter').addEventListener('input', renderStaffActivity);
+$('#staff-activity-date').addEventListener('change', renderStaffActivity);
+$('#staff-activity-type').addEventListener('change', renderStaffActivity);
+$('#staff-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget; const button = $('button[type="submit"]', form); const feedback = $('#staff-feedback');
+  button.disabled = true; feedback.textContent = 'Creating staff account…';
+  try {
+    const { data, error } = await supabase.functions.invoke('create-staff', { body: { name: form.elements.name.value.trim(), email: form.elements.email.value.trim(), password: form.elements.password.value } });
+    if (error) { let message = 'Could not create the staff account. Check the details and try again.'; try { message = (await error.context?.json())?.error || message; } catch {} throw new Error(message); }
+    form.reset(); hideStaffPassword(); form.hidden = true; feedback.textContent = data?.verification_sent ? 'Account created. Enter the code sent to the staff email below, and share the password privately.' : 'Account created, but the verification email could not be sent. Use Resend code below.'; await loadStaffSection();
+  } catch (error) { feedback.textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$('#staff-list').addEventListener('click', async (event) => {
+  const resend = event.target.closest('[data-resend-staff-code]');
+  if (resend) {
+    const codeForm = resend.closest('.staff-code-form'); const status = $('.staff-code-status', codeForm);
+    const verifier = createStaffVerificationClient(); if (!verifier) { status.textContent = 'Account services are unavailable.'; return; }
+    resend.disabled = true;
+    try {
+      const { error } = await verifier.auth.resend({ type: 'signup', email: codeForm.dataset.staffEmail });
+      if (error) throw error;
+      status.textContent = 'Code sent to the staff email.';
+    } catch (error) { status.textContent = error.status === 429 ? 'Please wait before requesting another code.' : 'Could not send the code. Try again.'; }
+    finally { resend.disabled = false; }
+    return;
+  }
+  const button = event.target.closest('[data-staff-id]'); if (!button) return;
+  const enable = button.dataset.staffActive === 'true';
+  if (!confirm(`${enable ? 'Enable' : 'Disable'} this staff account?`)) return;
+  button.disabled = true; const { error } = await supabase.rpc('owner_set_staff_active', { p_user_id: button.dataset.staffId, p_active: enable });
+  $('#staff-feedback').textContent = error ? 'Could not update staff access.' : `Staff account ${enable ? 'enabled' : 'disabled'}.`;
+  await loadStaffSection({ force: true });
+});
+$('#staff-list').addEventListener('submit', async (event) => {
+  const codeForm = event.target.closest('.staff-code-form'); if (!codeForm) return;
+  event.preventDefault(); if (!codeForm.reportValidity()) return;
+  const button = $('button[type="submit"]', codeForm); const status = $('.staff-code-status', codeForm);
+  const verifier = createStaffVerificationClient(); if (!verifier) { status.textContent = 'Account services are unavailable.'; return; }
+  button.disabled = true; status.textContent = 'Verifying…';
+  try {
+    const { data, error } = await verifier.auth.verifyOtp({ email: codeForm.dataset.staffEmail, token: codeForm.elements.code.value.trim(), type: 'signup' });
+    if (error) throw error;
+    if (!data.user || data.user.app_metadata?.role !== 'staff') throw new Error('This is not a staff account.');
+    status.textContent = 'Email verified.';
+    await loadStaffSection({ force: true });
+    $('#staff-feedback').textContent = 'Staff email verified.';
+  } catch (error) { status.textContent = error?.status === 429 ? 'Too many attempts. Please wait.' : 'Code invalid or expired. Check it or resend.'; }
+  finally { try { await verifier.auth.signOut({ scope: 'local' }); } catch {} button.disabled = false; }
+});
 const adminViews = {
   overview: [$('.admin-metrics'), $('#overview-sections'), $('#dashboard-workspace'), $('.sales-chart-section')],
   payments: [$('#gcash-settings'), $('#dashboard-workspace')],
@@ -724,16 +845,20 @@ const adminViews = {
   shipping: [$('#orders')],
   customers: [$('#customers')],
   analytics: [$('.admin-metrics'), $('.sales-chart-section')],
+  staff: [$('#staff')],
 };
 function showAdminView(view, updateHash = false) {
   if (!adminViews[view]) view = 'overview';
+  if (isStaff && ['staff', 'analytics', 'customers', 'shipping'].includes(view)) view = 'overview';
   currentAdminView = view;
+  document.querySelector('.admin-main').classList.toggle('is-overview', view === 'overview');
   if (view === 'payments') {
-    if (authorized && !gcashSettingsLoaded) loadGcashSettings();
+    if (authorized && !isStaff && !gcashSettingsLoaded) loadGcashSettings();
     const pending = ordersCache.filter((order) => order.status === 'payment_verification' && order.payments?.some((payment) => payment.status === 'pending' && payment.proof_path));
     if (!pending.some((order) => order.id === selectedOrderId)) selectedOrderId = pending[0]?.id || null;
   } else if (view === 'overview' && !selectedOrderId) selectedOrderId = ordersCache[0]?.id || null;
   if (view === 'overview' || view === 'payments') renderDashboardPanels();
+  if (view === 'staff' && authorized && !isStaff) loadStaffSection();
   const allPanels = new Set(Object.values(adminViews).flat());
   allPanels.forEach((panel) => { const active = adminViews[view].includes(panel); panel.hidden = !active; panel.classList.toggle('view-enter', active); });
   // The payment workspace focuses on the review queue and selected proof.
@@ -798,7 +923,7 @@ async function refreshNotifications() {
     const [orders, payments, customers] = await Promise.all([
       fetchAll(() => supabase.from('orders').select('id,order_number,status,created_at').gte('created_at', since).order('created_at', { ascending: false }).order('id')),
       fetchAll(() => supabase.from('payments').select('id,status,proof_path,created_at,orders!inner(order_number,status)').eq('status', 'pending').eq('orders.status', 'payment_verification').gte('created_at', since).order('created_at', { ascending: false }).order('id')),
-      fetchAll(() => supabase.rpc('admin_customer_profiles').select('id,full_name,created_at').gte('created_at', since).order('created_at', { ascending: false }).order('id')),
+      isStaff ? Promise.resolve({ data: [], error: null }) : fetchAll(() => supabase.rpc('admin_customer_profiles').select('id,full_name,created_at').gte('created_at', since).order('created_at', { ascending: false }).order('id')),
     ]);
     const failed = [orders, payments, customers].find((result) => result.error);
     if (failed) throw failed.error;
@@ -830,7 +955,12 @@ async function refreshAdminInBackground() {
   adminAutoRefreshing = true;
   try {
     await refreshNotifications();
-    if (!adminIsEditing()) await Promise.all([loadOrders({ background: true }), loadMetrics({ background: true }), loadProducts({ background: true }), loadProfiles({ background: true })]);
+    if (isStaff) {
+      const { data, error } = await supabase.rpc('staff_current_access');
+      if (error || !data) { authorized = false; layout.hidden = true; gate.hidden = false; gateMessage.textContent = 'Staff access is unavailable or disabled. Contact the shop owner.'; return; }
+    }
+    if (!isStaff && currentAdminView === 'staff') await loadStaffSection();
+    if (!adminIsEditing()) await Promise.all([loadOrders({ background: true }), loadMetrics({ background: true }), loadProducts({ background: true }), ...(isStaff ? [] : [loadProfiles({ background: true })])]);
     backgroundFailures.delete('dashboard');
   } catch { backgroundFailure('dashboard'); }
   finally { adminAutoRefreshing = false; }
