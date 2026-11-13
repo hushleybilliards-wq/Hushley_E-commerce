@@ -27,7 +27,7 @@ try {
     create function storage.foldername(text) returns text[] language sql as $$select string_to_array($1,'/')$$;
     grant usage on schema public,auth,storage to anon,authenticated;
     grant select,insert,update,delete on storage.objects to anon,authenticated;`);
-  for (const file of ['20261108031340_hushley_commerce_auth.sql','20261109105526_hushley_shipping_options_payment_guards.sql','20261111165241_product_payment_separate_shipping.sql','20261111173322_admin_order_guard_and_date_reference.sql','20261111173648_admin_order_guard_live_role.sql','20261112074024_hushley_gcash_payment_details.sql','20261113164358_staff_access_and_audit.sql','20261113172701_verify_staff_email.sql']) {
+  for (const file of ['20261108031340_hushley_commerce_auth.sql','20261109105526_hushley_shipping_options_payment_guards.sql','20261111165241_product_payment_separate_shipping.sql','20261111173322_admin_order_guard_and_date_reference.sql','20261111173648_admin_order_guard_live_role.sql','20261112074024_hushley_gcash_payment_details.sql','20261113164358_staff_access_and_audit.sql','20261113172701_verify_staff_email.sql','20261113185447_staff_shipping_recording.sql','20261113190010_staff_shipping_activity.sql']) {
     await db.exec(await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   }
   await q(`insert into auth.users(id,email,raw_app_meta_data) values ($1,'staff@gmail.com','{"role":"staff"}'),($2,'owner@gmail.com','{"role":"admin"}'),($3,'customer@gmail.com','{}')`, [staff, owner, customer]);
@@ -52,28 +52,55 @@ try {
   await db.exec('reset role');
   await q("select set_config('request.jwt.claims','{}',false)");
   const productId = (await q("update public.products set stock_quantity=5,reserved_quantity=1 where slug='staff-test' returning id")).rows[0].id;
-  const orderId = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,payment_method,status,subtotal,total,payment_scope) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','gcash','payment_verification',100,100,'products_only') returning id", [customer])).rows[0].id;
-  await q("insert into public.order_items(order_id,product_id,product_name,quantity,unit_price) values ($1,$2,'Staff test',1,100)", [orderId, productId]);
+  const orderId = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,payment_method,status,subtotal,total,payment_scope,courier,shipping_region) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','gcash','payment_verification',100,100,'products_only','j&t','Luzon') returning id", [customer])).rows[0].id;
+  await q("insert into public.order_items(order_id,product_id,product_name,quantity,unit_price,shipping_class) values ($1,$2,'Staff test',1,100,'cue')", [orderId, productId]);
   await q("insert into storage.objects(bucket_id,name) values ('payment-proofs','customer/proof.png')");
   const paymentId = (await q("insert into public.payments(order_id,method,amount,proof_path,status) values ($1,'gcash',100,'customer/proof.png','pending') returning id", [orderId])).rows[0].id;
   await as(staff,'staff');
   await assert.rejects(q("update public.orders set total=1 where id=$1", [orderId]), /Staff may update order status only|Shipping and total/);
   await assert.rejects(q("update public.payments set status='approved' where id=$1 returning id", [paymentId]), /permission denied/);
+  await assert.rejects(q("select public.admin_record_separate_shipping($1,300,'Cue rate')", [orderId]), /Approve product payment/);
   await q('select public.admin_review_payment($1,true)', [paymentId]);
+  await assert.rejects(q("select public.admin_record_separate_shipping($1,75,'Incorrect rate')", [orderId]), /configured rate/);
+  await q("select public.admin_record_separate_shipping($1,300,'Cue rate')", [orderId]);
+  await q("select public.admin_record_separate_shipping($1,300,'Cue rate')", [orderId]);
+  assert.deepEqual((await q('select separate_shipping_quote::text as quote, total::text as total from public.orders where id=$1', [orderId])).rows[0], {quote:'300.00', total:'100.00'});
   assert.equal((await q('select status from public.orders where id=$1', [orderId])).rows[0].status, 'payment_confirmed');
   assert.equal((await q('select stock_quantity from public.products where id=$1', [productId])).rows[0].stock_quantity, 4);
   await q("update public.orders set status='shipped' where id=$1", [orderId]);
+  await db.exec('reset role');
+  await q("select set_config('request.jwt.claims','{}',false)");
+  const riderOrder = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,payment_method,status,subtotal,total,payment_scope,courier,shipping_region) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','gcash','payment_confirmed',100,100,'products_only','lalamove','Luzon') returning id", [customer])).rows[0].id;
+  await q("insert into public.payments(order_id,method,amount,proof_path,status) values ($1,'gcash',100,'customer/rider.png','approved')", [riderOrder]);
+  const internationalOrder = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,country,payment_method,status,subtotal,total,payment_scope,courier,shipping_region) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','USA','gcash','payment_confirmed',100,100,'products_only','philpost','Outside Asia') returning id", [customer])).rows[0].id;
+  await q("insert into public.payments(order_id,method,amount,proof_path,status) values ($1,'gcash',100,'customer/international.png','approved')", [internationalOrder]);
+  const legacyOrder = (await q("insert into public.orders(customer_id,customer_name,email,mobile,address_line,city,province,postal_code,payment_method,status,subtotal,total,payment_scope,courier,shipping_region) values ($1,'Customer','c@gmail.com','123','Street','City','Province','1000','gcash','pending_payment',100,100,'order_total','j&t','Luzon') returning id", [customer])).rows[0].id;
+  await q("insert into public.order_items(order_id,product_id,product_name,quantity,unit_price,shipping_class) values ($1,$2,'Staff test',1,100,'cue')", [legacyOrder, productId]);
+  await as(staff,'staff');
+  await assert.rejects(q("select public.admin_record_separate_shipping($1,50,'Rider')", [riderOrder]), /paid to the rider/);
+  await q("select public.admin_record_separate_shipping($1,0,'Rider')", [riderOrder]);
+  await q("select public.admin_record_separate_shipping($1,4100,'Estimate',4300,'Receipt 1')", [internationalOrder]);
+  await q("select public.admin_confirm_order_shipping($1,'Luzon',300,'Cue rate')", [legacyOrder]);
+  assert.equal((await q('select shipping_confirmed from public.orders where id=$1', [legacyOrder])).rows[0].shipping_confirmed, true);
   await as(owner,'admin');
+  await q("select public.admin_record_separate_shipping($1,300,'Owner review')", [orderId]);
   const activities = (await q('select * from public.owner_staff_activity()')).rows;
   assert.ok(activities.every((row) => row.actor_name === 'Alex'));
   assert.ok(activities.some((row) => row.action === 'Payment approved'));
   assert.ok(activities.some((row) => row.action === 'Order status updated'));
+  const shippingActivities = activities.filter((row) => row.action === 'Shipping fee updated');
+  assert.equal(shippingActivities.length, 4);
+  assert.ok(shippingActivities.some((row) => row.detail === 'Shipping fee: not set → ₱300.00'));
+  assert.ok(shippingActivities.some((row) => row.detail === 'Shipping fee: not set → ₱0.00'));
+  assert.ok(shippingActivities.some((row) => row.detail === 'Shipping fee: not set → ₱4100.00 · Actual cost: not set → ₱4300.00'));
   await q('select public.owner_set_staff_active($1,false)', [staff]);
   await as(staff,'staff');
   assert.equal((await q('select public.staff_current_access() as active')).rows[0].active, false);
+  await assert.rejects(q("select public.admin_record_separate_shipping($1,300,'Disabled')", [orderId]), /Active staff or administrator access required/);
   assert.equal((await q("update public.products set name='Changed' where slug='staff-test' returning id")).rows.length, 0);
   await as(customer);
+  await assert.rejects(q("select public.admin_record_separate_shipping($1,300,'Customer')", [orderId]), /Active staff or administrator access required/);
   assert.equal((await q('select * from public.gcash_payment_details')).rows.length, 1);
   await assert.rejects(q('select * from public.owner_staff_activity()'), /Owner access required/);
-  console.log('PASS: staff access, owner-only audit, product deletion, reservation guard and revocation');
+  console.log('PASS: staff shipping permissions, J&T and Lalamove guards, legacy orders, payment review and access revocation');
 } finally { await db.close(); }

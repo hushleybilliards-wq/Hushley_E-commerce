@@ -11,7 +11,7 @@ This document records the owner's approved direction. The staff and email-verifi
 
 ## Permissions
 
-- Staff may view the customer, order, and proof details needed for fulfillment; manually approve or reject proof; update order status; and create or edit products and categories.
+- Staff may view the customer, order, and proof details needed for fulfillment; manually approve or reject proof; update order status; record shipping fees through the guarded shipping functions; and create or edit products and categories. The `staff_shipping_recording` migration was applied to production on 14 November 2026. Product-first orders require approved product payment before a separate J&T or PhilPost fee is recorded; Lalamove remains payable to the rider.
 - Product deletion, staff management, shop payment settings, sales reports and exports, and the complete staff activity log are owner-only. Individual order and payment amounts are visible to staff handling orders, so access to those records cannot prevent staff from deriving their own totals.
 - Do not expand `private.is_hushley_admin()` to include staff: existing policies and security-definer functions use it for owner-only actions. Add separate, narrowly scoped policies and RPCs, including storage policies for reading payment proof and uploading product images.
 - Order status changes must not allow staff to mark an unpaid order paid or bypass inventory and payment checks. Payment approval must reuse the existing transaction's validation and inventory guarantees. Product deletion must be denied in the database, not merely hidden in the interface.
@@ -20,6 +20,7 @@ This document records the owner's approved direction. The staff and email-verifi
 ## Activity history
 
 - Record staff actions on the server, in the same transaction as each successful change. Include the staff identity and a stable display name snapshot, action, subject, relevant old/new status where applicable, and timestamp. Do not store passwords, payment credentials, or unnecessary proof contents.
+- The `staff_shipping_activity` migration, applied to production on 14 November 2026, adds fee and actual-cost changes to this history with the order and old/new amounts; no-op saves do not create entries. Existing shipping changes cannot be reconstructed.
 - Only the owner can read the full activity log. Staff cannot insert, edit, or delete records directly. A disabled staff account's previous activity remains visible.
 - The dashboard groups records by Manila calendar date, newest first, with expandable dates and a connected timeline. Each entry shows the staff name, time, action, and affected order, product, or category. Provide date, staff, and activity filters.
 

@@ -74,6 +74,8 @@ The catalog includes billiard cues, carbon shafts, cue tips, chalk, ferrules, cu
 
 No live courier-rate integration is wanted. Use the shop's fixed/estimated rates below and keep courier choice and destination clear in the order.
 
+Authorized active staff and admins can record and update shipping amounts through the guarded order flow. Customers pay the product subtotal first; J&T and PhilPost shipping is arranged separately, and Lalamove is paid to the rider. Do not grant inactive staff or customers permission to change shipping amounts.
+
 ### Domestic: J&T Express
 
 | Item class | Luzon | Visayas | Mindanao |
