@@ -309,3 +309,52 @@
 #delete-account-dialog input:focus-visible,#delete-account-dialog button:focus-visible{outline:2px solid var(--ui-primary);outline-offset:2px}
 .delete-account-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}.delete-account-actions button{min-height:42px;padding:9px 14px;cursor:pointer}.delete-account-actions button:disabled{opacity:.6;cursor:wait}
 #cancel-delete-account{border:1px solid var(--ui-border-strong);border-radius:4px;background:transparent;color:var(--ui-text)}
+
+/* A wider account workspace keeps purchases readable alongside the navigation. */
+.account-portal-wrap { max-width:1320px; }
+.signed-in-card { width:100%; max-width:none; padding:28px 32px; }
+.account-shell { grid-template-columns:190px minmax(0,1fr); gap:28px; }
+.profile-heading { margin-bottom:22px; padding-bottom:18px; }
+.profile-heading h1 { font-size:24px; }
+.profile-avatar { width:48px; height:48px; flex-basis:48px; }
+.account-sections { gap:5px; }
+.account-sections a, .account-sections a:hover { display:flex; align-items:center; gap:10px; min-height:44px; padding:9px 12px; }
+.account-sections .material-symbols-outlined { flex:none; color:var(--ui-primary); font-size:20px; }
+.account-nav-signout { margin-left:12px; }
+.account-identity, .customer-profile-form, .account-delete-section, .addresses-view { max-width:760px; }
+.account-content #order-notice:empty { display:none; }
+.order-history { padding-top:0; border-top:0; }
+.order-history-head { align-items:center; margin-bottom:14px; }
+.order-filters { margin:0 0 12px; padding:0 4px; border-radius:5px; }
+.order-filter { flex:1 0 auto; min-height:48px; }
+.order-search-label { gap:5px; margin-bottom:12px; }
+#orders-list .order-row { margin-bottom:12px; padding:0 20px 18px; }
+#orders-list .order-card-header { align-items:center; min-height:58px; padding:12px 0; border-bottom:1px solid var(--ui-border); }
+#orders-list .order-card-header > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:5px 10px; }
+#orders-list .order-card-header strong { font-size:14px; }
+#orders-list .order-items { gap:0; padding:0; }
+#orders-list .order-items > .order-item-line { display:grid; grid-template-columns:76px minmax(0,1fr) auto; align-items:center; gap:14px; padding:14px 0; }
+#orders-list .order-item-line + .order-item-line { border-top:1px solid var(--ui-border); }
+#orders-list .order-item-photo { width:76px; height:76px; object-fit:cover; }
+#orders-list .order-item-details { display:grid; gap:3px; min-width:0; }
+#orders-list .order-item-details strong, #orders-list .order-item-details span { overflow-wrap:anywhere; }
+#orders-list .order-item-price { white-space:nowrap; text-align:right; }
+#orders-list .order-summary { align-items:start; padding:15px 0; }
+#orders-list .order-summary > span:last-child { text-align:right; }
+#orders-list .order-summary > span:last-child strong { color:var(--ui-primary); }
+#orders-list .order-next-step { margin:0 0 12px; padding:10px 12px; }
+@media (max-width:700px) {
+  .account-portal-wrap { padding-inline:14px; }
+  .signed-in-card { padding:20px 16px; }
+  .account-shell { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .account-sections a, .account-sections a:hover { flex-direction:column; justify-content:center; gap:3px; padding:7px 3px; }
+  .account-sections .material-symbols-outlined { font-size:19px; }
+  #orders-list .order-row { padding:0 14px 14px; }
+  #orders-list .order-items > .order-item-line { grid-template-columns:58px minmax(0,1fr) auto; gap:10px; }
+  #orders-list .order-item-photo { width:58px; height:58px; }
+  #orders-list .order-summary > span:last-child { text-align:left; }
+}
+@media (max-width:420px) {
+  #orders-list .order-items > .order-item-line { grid-template-columns:58px minmax(0,1fr); }
+  #orders-list .order-item-price { grid-column:2; text-align:left; }
+}
